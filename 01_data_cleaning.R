@@ -11,11 +11,10 @@
     # Travaux preleminaires (chgt de noms de colonnes, raccords de nom de variables entre les differents tableaux)
         # work sur data format (.csv) ----
         # Changement du nom de la 1er colonne des formats csv : "X.U.FEFF.Ref" --> "Ref"
-          nam2019a <- colnames(epoc2019a)
-          
           colnames(epoc2019a)[1]<- colnames(epoc2017)[1]
           colnames(epoc2019b)[1]<- colnames(epoc2017)[1]
-      
+          
+          nam2019a <- colnames(epoc2019a)
       # Work sur data format (.txt) ----
         nam2017 <- colnames(epoc2017)
         nam2018 <- colnames(epoc2018)
@@ -98,14 +97,42 @@
       o <- grep("ö", epoc2019a.bis[,"Nom.espèce"]) # 0
       o <- grep("ô", epoc2019a.bis[,"Nom.espèce"]) # 0
       o <- grep("û", epoc2019a.bis[,"Nom.espèce"]) # 0
+      
+      o <- grep("ê", epoc2019b[,"Observateur"]) # 0
+      o <- grep("ë", epoc2019b[,"Observateur"]) # 4968
+      o <- grep("ï", epoc2019b[,"Observateur"]) # 843
+      o <- grep("o", epoc2019b[,"Observateur"]) # 
+      o <- grep("ö", epoc2019b[,"Observateur"]) # 222
+      o <- grep("ô", epoc2019b[,"Observateur"]) # 390
+      o <- grep("û", epoc2019b[,"Observateur"]) # 0
 
       
     # fusion colonne nom + prenom
       epoc2019b[,"Nom"] <- as.character(epoc2019b[,"Nom"])
       epoc2019b[,"Prénom"] <- as.character(epoc2019b[,"Prénom"])
+      
+      # suppression des characteres apres " et"/", "/" &" dans la colonne prenom
+        o <- grep(", | et| &",epoc2019a[,"Prénom"])
+        pasbon <- as.data.frame(epoc2019a[o,"Prénom"]) ; colnames(pasbon) <- "Prénom"
+        
+        o <- grep(", | et| &",epoc2019a[,"Nom"])
+        pasbon <- as.data.frame(epoc2019a[o,"Nom"]) ; colnames(pasbon) <- "Nom"
+        
+        pasbon[,"Prénom"] <- as.character(gsub(" et.*|,.*| &.*","",pasbon[,"Prénom"]))
+        pasbon[,"Prénom"] <- as.character(gsub(" ","\\-",pasbon[,"Prénom"]))
+        #epoc2019b[,"Prénom"] <- as.character(gsub(" et.","",epoc2019b[,"Prénom"]))
 
       epoc2019b[,"Observateur"] <- paste(epoc2019b[,"Prénom"],epoc2019b[,"Nom"])
-
+      epoc2019b[,"Observateur"] <- as.character(gsub("é","e",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("è","e",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("ê","e",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("ë","e",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("ï","i",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("ö","o",epoc2019b[,"Observateur"]))
+      epoc2019b[,"Observateur"] <- as.character(gsub("ô","o",epoc2019b[,"Observateur"]))
+      
+      
+      epoc2019b[,"Observateur"] <- as.character(gsub(" ","_",epoc2019b[,"Observateur"]))
       
 
 
