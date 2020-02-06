@@ -1,8 +1,8 @@
 # import data
   setwd("C:/git/epoc/data")
   
-  epoc2017 <- read.table("data_2017.txt",header = T,skip=1, sep="\t",quote="")
-  epoc2018 <- read.table("data_2018.txt",header=T,skip=1, sep="\t",quote="",encoding="UTF-8") # vs pb d'accent
+  epoc2017 <- read.table("data_2017.txt",header = T,skip=1, sep="\t",quote="",dec=".")
+  epoc2018 <- read.table("data_2018.txt",header=T,skip=1, sep="\t",quote="",encoding="UTF-8",dec=".") # vs pb d'accent
   
   epoc2019a <- read.csv("export_data_liste_mars_avril_mai_2019.csv",sep=";",dec=".",encoding="UTF-8")
   epoc2019b <- read.csv("export_data_liste_juin_juillet_2019.csv",sep=";",dec=".",encoding="UTF-8")
@@ -52,7 +52,8 @@
   # merge des datasets
     epoc2018.bis <- epoc2018[,var2018]
     epoc2019a.bis <- epoc2019a[,var2018]
-    epoc2018_2019 <- rbind(epoc2018.bis,epoc2019a.bis)
+    epoc2019b.bis <- epoc2019b[,var2018]
+    epoc2018_2019 <- rbind(epoc2018.bis,epoc2019a.bis,epoc2019b.bis)
     #epoc2018_2019 <- epoc2018_2019[1:1000,] # a retirer par la suite
     
   # nettoyage du tableau unifie (i.e : retrait des accents / gestion des caracteres speciaux [?, ])
