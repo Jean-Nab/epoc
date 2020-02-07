@@ -14,6 +14,8 @@ setwd("C:/git/epoc/data")
                            , encoding="UTF-8",quote="")
   epoc.e <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_2019e.txt"),header=T,sep="\t", dec=","
                            , encoding="UTF-8",quote="")
+                           
+  epoc <- rbind(epoc.a,epoc.b,epoc.c,epoc.d,epoc.e)
 '
 
   epoc <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_2019.txt"),header=T,sep="\t", dec=","
