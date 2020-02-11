@@ -1,6 +1,10 @@
 # chemin
 setwd("C:/git/epoc/data")
 
+# packages
+  library(tidyverse)
+  library(stringr)
+
 
 # import data (faire un import a partir du dataset merged 2017-2018-2019)
 '
@@ -39,7 +43,7 @@ setwd("C:/git/epoc/data")
             
             comm_rq <- union(comm,rq) # concatenation des 2 vecteurs renseignant les positions sans prendre en compte les doublons
           
-            epoc.filt1 <- epoc[comm_rq.unique,] # fromation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
+            epoc.filt1 <- epoc[comm_rq,] # formation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
           
         # Enregistrement sur le disque
             write.table(x = epoc.filt1, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_1.txt"),sep="\t",dec=","
@@ -140,17 +144,46 @@ setwd("C:/git/epoc/data")
             # Formation de la colonne Nb_NA : regroupant le reste des informations de comptage non renseigne dans la colonne details
               epoc.filt6$Nb_NA <- epoc.filt6$Nombre - (epoc.filt6$Nb_pose + epoc.filt6$Nb_vol + epoc.filt6$Nb_audition)
               
-# 6 bis : modification de la forme du tableau
+            # Enregistrement sur le disque
+              write.table(x = epoc.filt6, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6.txt"),sep="\t",dec=","
+                          ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+              
+# 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
+    epoc.filt6.long <- reshape(epoc.filt6, varying = c("Nb_pose","Nb_vol","Nb_audition","Nb_NA"),
+                           v.names = "Nb_contact",
+                           timevar = "Info_contact",
+                           times = c("pose","en_vol","audition","na"),
+                           direction="long")
     
+    # Enregistrement sur le disque
+      write.table(x = epoc.filt6.long, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6_long.txt"),sep="\t",dec=","
+                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
         
 # 7eme filtrage selon la periode ----
     # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-30/06 et 1 tableau avec les observations en-dehors de cette periode
-        in.period <- which(epoc.filt4$Jour >= 1 & epoc.filt4$Jour <= 31 & epoc.filt4$Mois >= 3 & epoc.filt4$Mois <= 6)
-        dtf.in.period <- epoc.filt4[in.period,]
-        dtf.out.period <- epoc.filt4[-in.period,]
+        in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
+        epoc.filt7.in <- epoc.filt6.long[in.period,]
+        epoc.filt7.out <- epoc.filt6.long[-in.period,]
         
+    # Enregistrement sur le disque
+        write.table(x = epoc.filt7.in, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_in_period.txt"),sep="\t",dec=","
+                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+        write.table(x = epoc.filt7.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_out_period.txt"),sep="\t",dec=","
+                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
         
 # testing ground (not run) ----
+        
+    test6a <- epoc.filt6[1:5000,]
+    test6b <- reshape(test6a, varying = c("Nb_pose","Nb_vol","Nb_audition","Nb_NA"),
+                      v.names = "Nb_contact",
+                      timevar = "Info_contact",
+                      times = c("pose","en_vol","audition","na"),
+                      direction="long")
+    
+    head(test6b[test6b$ID_liste == 580355,c("Nom_espece","Info_contact","Nb_contact","id","ID_liste","Details","Nombre")],200)
+        
+        
+        
         
     test6 <- epoc.filt6[grep("vol",epoc.filt6$Details),]
     #h <- grep("[0-9]{1,}x [a-z]{1,} (pose)", test6$Details,value=TRUE)
