@@ -1,19 +1,23 @@
 # import data
   setwd("C:/git/epoc/data")
   
-  epoc2017a <- read.csv("export_mars_aout2017.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2017b <- read.csv("export_septembre_decembre2017.csv",sep=";",dec=",",encoding="UTF-8",skip=1)
+  # packages
+  library(stringr)
   
-  epoc2018a <- read.csv("export_janvier_mars2018.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2018b <- read.csv("export_avril_mai_juin2018.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2018c <- read.csv("export_juillet_decembre2018.csv",sep=";",dec=",",encoding="UTF-8")
-
-  epoc2019a <- read.csv("export_janvier_mars2019.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2019b <- read.csv("export_avril_mai2019.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2019c <- read.csv("export_juin_septembre2019.csv",sep=";",dec=",",encoding="UTF-8")
-  epoc2019d <- read.csv("export_octobre_decembre2019.csv",sep=";",dec=",",encoding="UTF-8")
+  # import des data
+    epoc2017a <- read.csv("export_mars_aout2017.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2017b <- read.csv("export_septembre_decembre2017.csv",sep=";",dec=",",encoding="UTF-8",skip=1)
+    
+    epoc2018a <- read.csv("export_janvier_mars2018.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2018b <- read.csv("export_avril_mai_juin2018.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2018c <- read.csv("export_juillet_decembre2018.csv",sep=";",dec=",",encoding="UTF-8")
   
-  o <- match(colnames(epoc2017a),colnames(epoc2017b))
+    epoc2019a <- read.csv("export_janvier_mars2019.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2019b <- read.csv("export_avril_mai2019.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2019c <- read.csv("export_juin_septembre2019.csv",sep=";",dec=",",encoding="UTF-8")
+    epoc2019d <- read.csv("export_octobre_decembre2019.csv",sep=";",dec=",",encoding="UTF-8")
+    
+    o <- match(colnames(epoc2017a),colnames(epoc2017b))
   
   
 # homogeneisation data ----
@@ -62,14 +66,24 @@
     
       
     
-# Formation d'une colonne observateur = fusion des colonnes Nom + Prenom ----
+# Formation d'une colonne observateur = fusion des colonnes Nom + Prenom / Nb_observateur----
       epoc.all[,"Nom"] <- as.character(epoc.all[,"Nom"])
       epoc.all[,"Prenom"] <- as.character(epoc.all[,"Prenom"])
   
       epoc.all[,"Observateur"] <- paste(epoc.all[,"Prenom"],epoc.all[,"Nom"])
+      
+      # Formation de la colonne Nb_observateur
+        # subsitution des caracteres pouvant faire reference a plusieurs observateurs
+        # epoc.all$Observateur <- as.character(gsub(",| et ","\\+",epoc.all$Observateur)) [=  argument de str_count]
+        # comptage du nombre de + et insertion de ce decompte dans la colonne Nb_observateur
+          epoc.all$Nb_observateur <- c(rep(1,nrow(epoc.all)))
+          epoc.all$Nb_observateur <- epoc.all$Nb_observateur + str_count(as.character(gsub(",| et ","\\+",epoc.all$Observateur)), pattern="\\+")
   
+        # Reajustement (pour les 3 observateur il y a unniquement 2 instances ["Yoann, Lilian et Baptiste Galle" & "Démeocq, Patrice (président) Roudoule, écomusée En Terre Gavotte"])
+          # correction du nb d'observateur pour "Démeocq, Patrice (président) Roudoule, écomusée En Terre Gavotte"
+          epoc.all[epoc.all$Observateur == "Démeocq, Patrice (président) Roudoule, écomusée En Terre Gavotte","Nb_observateur"] <- 1
   
-# Sauvegarde du tableau unifie (contenant des observations EPOC et non-EPOC de 1/03/2017 --> 31/12/2019) sur disque
+# Sauvegarde du tableau unifie (contenant des observations EPOC et non-EPOC de 1/03/2017 --> 31/12/2019) sur disque ----
       # Fichier trop gros tel quel --> saucissonnage en 5 parties
       part <- nrow(epoc.all)/5 ; part # part = 1041353
       epoc.alla <- epoc.all[1:1041353,]
@@ -77,6 +91,9 @@
       epoc.allc <- epoc.all[2082708:3124061,]
       epoc.alld <- epoc.all[3124062:4165415,]
       epoc.alle <- epoc.all[4165416:nrow(epoc.all),]
+      
+      write.table(x = epoc.all, file = paste0(sub("/data","/output",getwd()),"/export_2017_2019.txt"),sep="\t",dec=","
+                  ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
       
       write.table(x = epoc.alla, file = paste0(sub("/data","/output",getwd()),"/export_2017_2019a.txt"),sep="\t",dec=","
                   ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
@@ -107,6 +124,9 @@
 
 # testing ground (not run) ----
     
+    j <- grep(pattern = "3",epoc.all$Nb_observateur)  
+      
+      
     epoc.alla1 <- epoc.all[1:5000,]  
     write.table(x = epoc.alla1, file = paste0(sub("/data","/output",getwd()),"/export_2017_2019a1.txt"),sep="\t",dec=","
                 ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
