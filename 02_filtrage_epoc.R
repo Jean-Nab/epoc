@@ -183,12 +183,14 @@ setwd("C:/git/epoc/data")
         
 # 7eme filtrage selon la periode ----
     # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-30/06 et 1 tableau avec les observations en-dehors de cette periode
-        in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
-        epoc.filt7.long.in <- epoc.filt6.long[in.period,]
-        epoc.filt7.long.out <- epoc.filt6.long[-in.period,]
+        long.in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
+        court.in.period <- which(epoc.filt6$Jour >= 1 & epoc.filt6$Jour <= 31 & epoc.filt6$Mois >= 3 & epoc.filt6$Mois <= 6)
+      
+        epoc.filt7.long.in <- epoc.filt6.long[long.in.period,]
+        epoc.filt7.long.out <- epoc.filt6.long[-long.in.period,]
         
-        epoc.filt7.court.in <- epoc.filt6[in.period,]
-        epoc.filt7.court.out <- epoc.filt6[-in.period,]
+        epoc.filt7.court.in <- epoc.filt6[court.in.period,]
+        epoc.filt7.court.out <- epoc.filt6[-court.in.period,]
         
     # Enregistrement sur le disque
         write.table(x = epoc.filt7.long.in, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_long_in_period.txt"),sep="\t",dec=","
