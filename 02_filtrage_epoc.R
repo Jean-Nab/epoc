@@ -94,7 +94,29 @@ setwd("C:/git/epoc/data")
       # Enregistrement sur le disque
         write.table(x = epoc.filt5, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_5.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+
+# Rajout des colonnes Diversite_liste et Abondance_liste servant d'indice pour qualifier la liste ----
+    # Idee : travaille de decompte d'espece et d'abondance total pour une liste a la fois (detection des listes & isolement d'une liste ==> calcul des indices)
+        epoc.filt5$Diversite_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Diversite_liste (= nb d'espece specifique observe dans chaque liste)
+        epoc.filt5$Abondance_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Abondance_liste (= total du comptage de chaque liste)
         
+        vec.ID <- unique(epoc.filt5$ID_liste) # vecteur regroupant les ID de listes
+        
+        # boucle de lecture des ID de listes 
+        u <- 1
+        while (u <= length(vec.ID)){
+          
+          # formation d'un tableau temporaire contenant des informations sur les identifiants de liste et les differentes especes
+          dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],c("Nom_espece","ID_liste","Nombre")]       
+          # calcul de la diversite (membre de droite) et ajout dans la colonne Diversite_liste pour toutes les lignes ayant un ID_liste identique 
+          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Diversite_liste"] <- length(unique(dtf.tmp$Nom_espece)) 
+          # calcul de l'abondance total par liste (somme realise sur un dtf temporaire regroupant toutes les observations d'une liste a la fois)
+          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Abondance_liste"] <- sum(dtf.tmp$Nombre)
+          
+          
+          cat(u,"/",length(vec.ID),"\n") # etat d'avancement de la boucle
+          u <- u + 1 # incrementation de l'indice de lecture de boucle
+        }
 
 # 6eme filtrage selon les details de l'observation ----
       # conditions : "En vol" ; "posé" ; "en main" ; "analyse de pelotes" ; "Contact auditif"
@@ -170,6 +192,7 @@ setwd("C:/git/epoc/data")
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
         write.table(x = epoc.filt7.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_out_period.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+        
         
 # testing ground (not run) ----
         
