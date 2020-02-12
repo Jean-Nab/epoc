@@ -163,11 +163,11 @@ setwd("C:/git/epoc/data")
                 u <- u+1
               }
               
-            # Formation de la colonne Nb_NA : regroupant le reste des informations de comptage non renseigne dans la colonne details
+            # Remplissage de la colonne Nb_NA : regroupant le reste des informations de comptage non renseigne dans la colonne details
               epoc.filt6$Nb_NA <- epoc.filt6$Nombre - (epoc.filt6$Nb_pose + epoc.filt6$Nb_vol + epoc.filt6$Nb_audition)
               
             # Enregistrement sur le disque
-              write.table(x = epoc.filt6, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6.txt"),sep="\t",dec=","
+              write.table(x = epoc.filt6, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6_court.txt"),sep="\t",dec=","
                           ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
               
 # 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
@@ -184,15 +184,23 @@ setwd("C:/git/epoc/data")
 # 7eme filtrage selon la periode ----
     # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-30/06 et 1 tableau avec les observations en-dehors de cette periode
         in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
-        epoc.filt7.in <- epoc.filt6.long[in.period,]
-        epoc.filt7.out <- epoc.filt6.long[-in.period,]
+        epoc.filt7.long.in <- epoc.filt6.long[in.period,]
+        epoc.filt7.long.out <- epoc.filt6.long[-in.period,]
+        
+        epoc.filt7.court.in <- epoc.filt6[in.period,]
+        epoc.filt7.court.out <- epoc.filt6[-in.period,]
         
     # Enregistrement sur le disque
-        write.table(x = epoc.filt7.in, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_in_period.txt"),sep="\t",dec=","
+        write.table(x = epoc.filt7.long.in, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_long_in_period.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
-        write.table(x = epoc.filt7.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_out_period.txt"),sep="\t",dec=","
+        write.table(x = epoc.filt7.long.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_long_out_period.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
         
+        
+        write.table(x = epoc.filt7.court.in, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),sep="\t",dec=","
+                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+        write.table(x = epoc.filt7.court.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_out_period.txt"),sep="\t",dec=","
+                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
         
 # testing ground (not run) ----
         
