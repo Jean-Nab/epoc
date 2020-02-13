@@ -1,0 +1,234 @@
+---
+title: "Filtrage EPOC"
+author: "Jean Nabias"
+date: "13/02/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, eval=TRUE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+# chemin
+setwd("C:/git/epoc/data")
+
+# packages
+  library(tidyverse)
+  library(stringr)
+  library(knitr)
+
+# Importation de la donnee
+  load("C:/git/epoc/epoc_debut_filtrage.RData")
+  #epoc <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_2019.txt"),header=T,sep="\t", dec=","
+  #                     , encoding="UTF-8",quote="")
+
+```
+
+## Processus de filtrage du jeu de donnees EPOC (<u>02_filtrage_epoc.R</u>)
+
+  Ce document montre les differents filtres applique aux données issu de faune-france afin d'obtenir des observations issues du protocole EPOC. Ainsi que le mise en place d'indicateur (Diversite par liste et Abondance par liste) permettant d'évaluer la qualité des observations.
+
+* Les différents filtres appliqués sont :
+    + Filtrage selon le mentionnement d'EPOC dans les commentaires / remarques des listes d'observations
+    + Filtrage selon le tps d'écoute [1:10]
+    + Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD" dans les données (erreur de saisie)
+    + Retrait des observations avec comme "Type de localisation" : jardin
+    + Selection des listes complètes
+    + Ajout des indicateurs de diversite et d'abondance
+    + Retrait des observations avec comme détails "en main" et "analyse de pelotes"
+    + Formation de 2 tableaux (un format court et un format long) et filtrage selon la periode (1/03 - 30/06)
+
+  Chaque étape de filtrage du script est enregistrée sur le disque dur.
+
+### Filtrage selon le mentionnement d'EPOC dans les commentaires / remarques des listes d'observations
+
+  Certaines listes mentionnés le protocole EPOC dans les remarques d'observations et non dans les commentaires de la liste. Cela a donc necessite d'uniformise le mentionnement d'EPOC dans les listes où il était inscrit dans les commentaires.
+
+
+```{r filtr_1, include = FALSE, results="asis", cache=TRUE}
+             view.ID <- c(563692,89480)
+
+            rq <- grep("EPOC",toupper(epoc[,"Remarque"])) # recherche de la mention epoc (ecrit sous differentes manieres dans la colonne "Remarque")
+            ID.rq <- epoc[rq,"ID_liste"] # Recherche des ID_liste associe
+            
+            obs_liste <- which(epoc[,"ID_liste"] %in%  ID.rq) # recherche de toutes les lignes avec un ID_liste contenu dans ID.rq
+            
+            view.test <- epoc[epoc$ID_liste == view.ID,c("ID_liste","Remarque","Commentaire_de_la_liste")]
+            
+            epoc[obs_liste,"Remarque"] <- "EPOC" # attribution de la mention EPOC aux observations
+            
+        # Filtrage du jeu de donnees afin d'avoir uniquement les observations ou la mention epoc est integrer
+            comm <- grep("EPOC",toupper(epoc[,"Commentaire_de_la_liste"])) # detection des lignes contenant la mention epoc dans la colonne commentaire
+            
+            comm_rq <- union(comm,rq) # concatenation des 2 vecteurs renseignant les positions sans prendre en compte les doublons
+          
+            epoc.filt1 <- epoc[comm_rq,] # formation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
+
+            view.test1 <- epoc.filt1[epoc.filt1$ID_liste == view.ID,c("ID_liste","Remarque","Commentaire_de_la_liste")]
+
+            view(view.test[c(1:6,10:12),],main = "Avant uniformisation de Remarque")
+            kable(view.test[c(1:6,10:12),],caption = "Avant uniformisation de Remarque",align = "c") 
+            kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remarque",align = "c")
+```
+
+```{r filt1r_1a ,echo=FALSE, fig.align="left"}
+knitr::kable(view.test[c(1:6,10:12),],caption = "Avant uniformisation de Remarque",align = "c")
+
+```
+
+```{r filt1r_1b ,echo=FALSE, fig.align="right"}
+knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remarque",align = "c")
+
+```
+
+
+  Après ce 1er filtrage, plus de 360.000 observations ont été retenus.
+
+### Filtrage selon le tps d'écoute [1:10]
+  Ce filtrage nous permet de sélectionner tous les EPOC ayant une durée comprise entre 1 et 10  minutes.
+
+
+```{r filtr_2, include=TRUE, cache=TRUE}
+    epoc.filt2 <- epoc.filt1
+    epoc.filt2[,"Heure_debut"] <- as.numeric(gsub("\\:","\\.",epoc.filt2[,"Heure_debut"]))
+    epoc.filt2[,"Heure_fin"] <- as.numeric(gsub("\\:","\\.",epoc.filt2[,"Heure_fin"]))
+    
+    epoc.filt2[,"Tps_ecoute"] <- abs(epoc.filt2[,"Heure_fin"] - epoc.filt2[,"Heure_debut"]) # valeur absolue 
+    
+    tps_epoc <- which(epoc.filt2[,"Tps_ecoute"] >= 0.01 & epoc.filt2[,"Tps_ecoute"] <= 0.10)
+    epoc.filt2 <- epoc.filt2[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 8 minutes
+
+```
+
+  Après ce 2nd filtrage, 308.000 observations sont conservées
+  
+### Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD"
+
+```{r filt_3, include=TRUE, cache=TRUE}
+        levels(epoc.filt2$Protocole) # Les differents niveaux de la variable Protocole
+        search.prot <- grep("GENERIC_BIRD|",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
+        
+        epoc.filt3 <- epoc.filt2[search.prot,]
+```
+
+  Après le 3eme filtre, ont obtiens le même nombre d'observations. Le jeu de données ne contenait pas d'erreur de saisie.
+  
+### Retrait des observations avec comme "Type de localisation" : jardin
+  Les observations avec la mention de jardin dans le type de localisation ont été retiré du jeu de données, car celles-ci pourrait être une source de confusion entre le protocole "Oiseaux des jardins" et la réalisation d'une EPOC dans un jardin par un observateur.
+  
+```{r filt_4, include=TRUE, cache=TRUE}
+        levels(epoc.filt3$Type_de_localisation) # Les differents niveaux de la variable Type_de_localisation
+        loc.jardin <- grep("Jardin",epoc.filt3$Type_de_localisation)
+        
+        epoc.filt4 <- epoc.filt3[-loc.jardin,]
+        
+```
+  Un peu moins de 100 observations ont été retiré pour éviter la confusion.
+  
+### Selection des listes complètes
+
+```{r filt_5, include=TRUE, cache=TRUE}
+        epoc.filt5 <- epoc.filt4[epoc.filt4$Liste_complete == 1,]
+```
+  800 observations ont été retiré du jeu de données. Ce qui signifie que la grande majorité des observations EPOC renseigné sur la totalite des oiseaux renseigné.
+  
+### Ajout des indicateurs de diversite et d'abondance
+  L'ajout de ces deux indicateurs permettra d'évaluer la qualité/hétérogénéité des différentes observations.
+
+```{r add_indic, include=TRUE, cache=TRUE}
+        epoc.filt5$Diversite_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Diversite_liste (= nb d'espece specifique observe dans chaque liste)
+        epoc.filt5$Abondance_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Abondance_liste (= total du comptage de chaque liste)
+        
+        vec.ID <- unique(epoc.filt5$ID_liste) # vecteur regroupant les ID de listes
+        
+        # boucle de lecture des ID de listes 
+        u <- 1
+        while (u <= length(vec.ID)){
+          
+          # formation d'un tableau temporaire contenant des informations sur les identifiants de liste et les differentes especes
+          dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],c("Nom_espece","ID_liste","Nombre")]       
+          # calcul de la diversite (membre de droite) et ajout dans la colonne Diversite_liste pour toutes les lignes ayant un ID_liste identique 
+          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Diversite_liste"] <- length(unique(dtf.tmp$Nom_espece)) 
+          # calcul de l'abondance total par liste (somme realise sur un dtf temporaire regroupant toutes les observations d'une liste a la fois)
+          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Abondance_liste"] <- sum(dtf.tmp$Nombre)
+          
+          
+          #cat(u,"/",length(vec.ID),"\n") # etat d'avancement de la boucle
+          u <- u + 1 # incrementation de l'indice de lecture de boucle
+        }
+```
+
+### Retrait des observations avec comme détails "en main" et "analyse de pelotes"
+  Ce filtrage a necessité du travail sur la varaible "Details" qui regroupe des informations (Nombre/sexe/condition de contact) lors des observations. Les conditions d'observations que j'ai retiré sont "en main" et "analyse de pelotes".
+  J'ai decidé de "segmenté" les informations de la colonne Details et de crée 4 colonnes (Nb_pose / Nb_vol / Nb_audition / Nb_NA) afin de récupérer ces informations triées.
+  
+```{r filt_6, include=TRUE, cache=TRUE}
+        # retrait des conditions "en main" ; "analyse de pelotes"
+          cond.retir <- grep("en main|pelotes",epoc.filt5$Details)
+          epoc.filt6 <- epoc.filt5[-cond.retir,]
+          
+        # retrait des accents dans la colonne details (possible source de pb lors du grep)
+          epoc.filt6$Details <- gsub("é","e",epoc.filt6$Details)
+          epoc.filt6$Details <- gsub("â","a",epoc.filt6$Details)
+          epoc.filt6$Details <- tolower(epoc.filt6$Details)
+          
+        # formation de 4 nouvelles colonnes regroupant les informations de la colonne "Details"
+          epoc.filt6$Nb_pose <- c(rep(0,nrow(epoc.filt6)))
+          epoc.filt6$Nb_vol <- c(rep(0,nrow(epoc.filt6)))
+          epoc.filt6$Nb_audition <- c(rep(0,nrow(epoc.filt6)))
+          epoc.filt6$Nb_NA <- c(rep(0,nrow(epoc.filt6)))
+          
+        # Remplissage des 4 nouvelles colonnes selon les informations de details
+            # Idee : formation d'une liste de characteres (det.list) contenant les informations de details en incluant une separation a chaque "/"
+            # Formation de la liste et splitting
+              det.list <- strsplit(epoc.filt6$Details, split = "/")
+              
+            # Boucle de lecture de la liste (det.list) et insertion de la donnees dans la colonne correspondante
+            # i.e : ligne Y : 9x male (en vol) / 7x male (pose) ==> ligne Y : 9 (dans $Nb_vol) ; 7 (dans $Nb_pose)
+              
+              u <- 1 # initialisation de l'indice de lecture de la liste
+              while (u <= length(det.list)){ # lecture de la liste
+                p <- 1 # initialisation de l'indice de lecture des elements au sein de la liste
+                while (p <= length(det.list[[u]])){ # lecture des elements au sein de la liste
+                  # Mise en place de conditions permettant d'inserer les donnees numeriques dans les bonnes colonnes
+                  if (grepl("pose",det.list[[u]][p]) == TRUE){ # Si presence de la mention (pose)
+                    epoc.filt6[u,"Nb_pose"] <- epoc.filt6[u,"Nb_pose"] + as.numeric(gsub("([0-9]+).*$", "\\1", det.list[[u]][p])) # ajout de la valeur numerique dans la colonne Nb_pose
+                  }
+                  if (grepl("vol",det.list[[u]][p]) == TRUE) { # Si presence de la mention (en vol)
+                    epoc.filt6[u,"Nb_vol"] <- epoc.filt6[u,"Nb_vol"] + as.numeric(gsub("([0-9]+).*$", "\\1", det.list[[u]][p])) # ajout de la valeur numerique dans la colonne Nb_vol
+                  }
+                  if (grepl("auditif",det.list[[u]][p]) == TRUE) {
+                    epoc.filt6[u,"Nb_audition"] <- epoc.filt6[u,"Nb_audition"] + as.numeric(gsub("([0-9]+).*$", "\\1", det.list[[u]][p]))
+                  }
+                  p <- p+1 
+                }
+                #cat(u," / ",length(det.list),"\n") # etat d'avancement de la boucle
+                u <- u+1
+              }
+              
+            # Remplissage de la colonne Nb_NA : regroupant le reste des informations de comptage non renseigne dans la colonne details
+              epoc.filt6$Nb_NA <- epoc.filt6$Nombre - (epoc.filt6$Nb_pose + epoc.filt6$Nb_vol + epoc.filt6$Nb_audition)
+
+```
+
+### Formation de 2 tableaux (un format court et un format long) et filtrage selon la periode (1/03 - 30/06)
+
+```{r filt_7, include=TRUE, cache=TRUE}
+    # 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
+        epoc.filt6.long <- reshape(epoc.filt6, varying = c("Nb_pose","Nb_vol","Nb_audition","Nb_NA"),
+                           v.names = "Nb_contact",
+                           timevar = "Info_contact",
+                           times = c("pose","en_vol","audition","na"),
+                           direction="long")
+    
+
+# 7eme filtrage selon la periode ----
+    # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-30/06 et 1 tableau avec les observations en-dehors de cette periode
+        long.in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
+        court.in.period <- which(epoc.filt6$Jour >= 1 & epoc.filt6$Jour <= 31 & epoc.filt6$Mois >= 3 & epoc.filt6$Mois <= 6)
+      
+        epoc.filt7.long.in <- epoc.filt6.long[long.in.period,]
+        epoc.filt7.long.out <- epoc.filt6.long[-long.in.period,]
+        
+        epoc.filt7.court.in <- epoc.filt6[court.in.period,]
+        epoc.filt7.court.out <- epoc.filt6[-court.in.period,]
+
+```
