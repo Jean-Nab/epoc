@@ -24,23 +24,23 @@ setwd("C:/git/epoc/data")
 
 ## Processus de filtrage du jeu de donnees EPOC (<u>02_filtrage_epoc.R</u>)
 
-  Ce document montre les differents filtres applique aux données issu de faune-france afin d'obtenir des observations issues du protocole EPOC. Ainsi que le mise en place d'indicateur (Diversite par liste et Abondance par liste) permettant d'évaluer la qualité des observations.
+  Ce document montre les différents filtres appliqués aux données issues de faune-france afin d'obtenir des observations issues du protocole EPOC. Ainsi que la mise en place d'indicateur (Diversité par liste et Abondance par liste) permettant d'évaluer la qualité des observations.
 
 * Les différents filtres appliqués sont :
-    + Filtrage selon le mentionnement d'EPOC dans les commentaires / remarques des listes d'observations
+    + Filtrage selon la mention d'EPOC dans les commentaires / remarques des listes d'observations
     + Filtrage selon le tps d'écoute [1:10]
     + Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD" dans les données (erreur de saisie)
     + Retrait des observations avec comme "Type de localisation" : jardin
-    + Selection des listes complètes
+    + Sélection des listes complètes
     + Ajout des indicateurs de diversite et d'abondance
     + Retrait des observations avec comme détails "en main" et "analyse de pelotes"
-    + Formation de 2 tableaux (un format court et un format long) et filtrage selon la periode (1/03 - 30/06)
+    + Formation de 2 tableaux (un format court et un format long) et filtrage selon la période (1/03 - 30/06)
 
   Chaque étape de filtrage du script est enregistrée sur le disque dur.
 
-### Filtrage selon le mentionnement d'EPOC dans les commentaires / remarques des listes d'observations
+### Filtrage selon la mention d'EPOC dans les commentaires / remarques des listes d'observations
 
-  Certaines listes mentionnés le protocole EPOC dans les remarques d'observations et non dans les commentaires de la liste. Cela a donc necessite d'uniformise le mentionnement d'EPOC dans les listes où il était inscrit dans les commentaires.
+  Certaines listes mentionnés le protocole EPOC dans les remarques d'observations et non dans les commentaires de la liste. Cela a donc nécessite d'uniformise la mention d'EPOC dans les listes où il était inscrit dans les commentaires.
 
 
 ```{r filtr_1, include = FALSE, results="asis", cache=TRUE}
@@ -82,7 +82,7 @@ knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remar
 
   Après ce 1er filtrage, plus de 360.000 observations ont été retenus.
 
-### Filtrage selon le tps d'écoute [1:10]
+### Filtrage selon le temps d'écoute [1:10]
   Ce filtrage nous permet de sélectionner tous les EPOC ayant une durée comprise entre 1 et 10  minutes.
 
 
@@ -109,10 +109,10 @@ knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remar
         epoc.filt3 <- epoc.filt2[search.prot,]
 ```
 
-  Après le 3eme filtre, ont obtiens le même nombre d'observations. Le jeu de données ne contenait pas d'erreur de saisie.
+  Après le 3eme filtre, on obtiens le même nombre d'observations. Le jeu de données ne contenait pas d'erreur de saisie.
   
 ### Retrait des observations avec comme "Type de localisation" : jardin
-  Les observations avec la mention de jardin dans le type de localisation ont été retiré du jeu de données, car celles-ci pourrait être une source de confusion entre le protocole "Oiseaux des jardins" et la réalisation d'une EPOC dans un jardin par un observateur.
+  Les observations avec la mention de jardin dans le type de localisation ont été retiré du jeu de données, car celles-ci pourraient être une source de confusion entre le protocole "Oiseaux des jardins" et la réalisation d'une EPOC dans un jardin par un observateur.
   
 ```{r filt_4, include=TRUE, cache=TRUE}
         levels(epoc.filt3$Type_de_localisation) # Les differents niveaux de la variable Type_de_localisation
@@ -123,14 +123,14 @@ knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remar
 ```
   Un peu moins de 100 observations ont été retiré pour éviter la confusion.
   
-### Selection des listes complètes
+### Sélection des listes complètes
 
 ```{r filt_5, include=TRUE, cache=TRUE}
         epoc.filt5 <- epoc.filt4[epoc.filt4$Liste_complete == 1,]
 ```
-  800 observations ont été retiré du jeu de données. Ce qui signifie que la grande majorité des observations EPOC renseigné sur la totalite des oiseaux renseigné.
+  800 observations ont été retiré du jeu de données. Ce qui signifie que la grande majorité des observations EPOC renseigné sur la totalité des oiseaux renseignés.
   
-### Ajout des indicateurs de diversite et d'abondance
+### Ajout des indicateurs de diversité et d'abondance
   L'ajout de ces deux indicateurs permettra d'évaluer la qualité/hétérogénéité des différentes observations.
 
 ```{r add_indic, include=TRUE, cache=TRUE}
@@ -157,8 +157,8 @@ knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remar
 ```
 
 ### Retrait des observations avec comme détails "en main" et "analyse de pelotes"
-  Ce filtrage a necessité du travail sur la varaible "Details" qui regroupe des informations (Nombre/sexe/condition de contact) lors des observations. Les conditions d'observations que j'ai retiré sont "en main" et "analyse de pelotes".
-  J'ai decidé de "segmenté" les informations de la colonne Details et de crée 4 colonnes (Nb_pose / Nb_vol / Nb_audition / Nb_NA) afin de récupérer ces informations triées.
+  Ce filtrage a nécessité du travail sur la variable "Détails" qui regroupe des informations (Nombre/sexe/condition de contact) lors des observations. Les conditions d'observations que j'ai retirées sont "en main" et "analyse de pelotes".
+  J'ai décidé de "segmenter" les informations de la colonne Détails et de crée 4 colonnes (Nb_pose / Nb_vol / Nb_audition / Nb_NA) afin de récupérer ces informations triées.
   
 ```{r filt_6, include=TRUE, cache=TRUE}
         # retrait des conditions "en main" ; "analyse de pelotes"
@@ -209,7 +209,7 @@ knitr::kable(view.test1[c(1:6,10:12),], caption = "Apres uniformisation de Remar
 
 ```
 
-### Formation de 2 tableaux (un format court et un format long) et filtrage selon la periode (1/03 - 30/06)
+### Formation de 2 tableaux (un format court et un format long) et filtrage selon la période (1/03 - 30/06)
 
 ```{r filt_7, include=TRUE, cache=TRUE}
     # 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
