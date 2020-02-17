@@ -182,9 +182,9 @@ setwd("C:/git/epoc/data")
                 ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
         
 # 7eme filtrage selon la periode ----
-    # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-30/06 et 1 tableau avec les observations en-dehors de cette periode
-        long.in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 6)
-        court.in.period <- which(epoc.filt6$Jour >= 1 & epoc.filt6$Jour <= 31 & epoc.filt6$Mois >= 3 & epoc.filt6$Mois <= 6)
+    # formation de 2 tableaux : 1 tableau avec des observations comprises entre le 1/03-31/07 et 1 tableau avec les observations en-dehors de cette periode
+        long.in.period <- which(epoc.filt6.long$Jour >= 1 & epoc.filt6.long$Jour <= 31 & epoc.filt6.long$Mois >= 3 & epoc.filt6.long$Mois <= 7)
+        court.in.period <- which(epoc.filt6$Jour >= 1 & epoc.filt6$Jour <= 31 & epoc.filt6$Mois >= 3 & epoc.filt6$Mois <= 7)
       
         epoc.filt7.long.in <- epoc.filt6.long[long.in.period,]
         epoc.filt7.long.out <- epoc.filt6.long[-long.in.period,]
