@@ -1,0 +1,503 @@
+---
+title: "Exploration du jeu de donnée"
+author: "Jean N"
+date: "21/02/2020"
+output: html_document
+---
+
+```{r setup, include=TRUE,cache=TRUE,echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE,include=FALSE)
+# chemin
+setwd("C:/git/epoc/data")
+
+# packages
+library(reshape2)
+library(stringr)
+library(ggplot2)
+library(lubridate)
+library(tidyverse)
+library(mgcv)
+library(sf)
+library(maptools)
+library(classInt)
+library(tmap) ; library(tmaptools)
+
+
+# import des data/intialisation ----
+    # tableau court dans la periode 1/03 - 31/07
+                epoc.court.in <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),header=T,sep="\t", dec=","
+                                    , encoding="UTF-8",quote="")
+      # Fonctions de tri des donnees
+        time_to_decimal <- function(x) {
+          x <- hm(x, quiet = TRUE)
+          hour(x) + minute(x) / 60
+        }
+        
+        length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+        }
+        # transformation des heures de début en valeurs continues
+        epoc.court.in$Heure_debut <- gsub("\\.","\\:",epoc.court.in$Heure_debut)
+        epoc.court.in$Heure_debut <- time_to_decimal(epoc.court.in$Heure_debut)
+        # gestion d'un probleme de conversion avec la foncction
+          o <- which(is.na(epoc.court.in$Heure_debut))
+          epoc.court.in[o,"Heure_debut"] <- as.numeric(epoc.court.in[o,"Heure_de_debut"])
+```
+
+## Exploration du jeu de données EPOC
+
+  Ce document a pour objectif de montrer le processus et les résultats obtenus durant la phase exploratoire du jeu de données EPOC.
+  
+* PLAN :
+    + La formation d'indices (Diversité et Abondance) permettant de caractériser le jeu de données
+    + Phase exploratoire : comment les variables caractérisant l'environnement des observations sont reparties dans le jeu de données ?
+        - Répartition temporelle selon le mois et les jours de l'année
+        - Heure de début d'écoute (Heure_debut)
+        - Temps d'écoute de l'observation (Tps_ecoute)
+        - L'altitude (Altitude)
+        - L'effort d'échantillonnage
+            + Selon les observateurs
+            + Selon la répartition spatiale
+        - Début d'étude de qualité des EPOC
+            
+            
+### Formation des indices Diversite / Abondance
+  Afin de caractériser ce jeu de données, il était intéressant d'avoir une information sur la diversité (nombre d'espèces différentes) et l'abondance (nombre d'individus) de chaque EPOC (<i>i.e</i> ID_liste dans le jeu de données) afin de pouvoir les différencier les unes des autres.
+  
+  La première étape de mon exploration était de voir comment ces deux indices étaient reliés. J'ai donc réalisé un test de corrélation (Spearman).
+  
+```{r test_de_correlation,include=FALSE}
+cor.res <- cor.test(epoc.court.in$Abondance_liste,epoc.court.in$Diversite_liste,method = "spearman",exact=TRUE)
+```
+
+```{r include=TRUE,echo=FALSE}
+cor.res
+```
+  On observe une corrélation positive significative des deux indices. Les observations ou le plus d'oiseaux ont été observé sont aussi les observations ayant enregistré une grande diversité.
+  
+  
+### Phase exploratoire : Répartition temporelle (mois et jours)
+  Dans cette partie, je me suis penché sur la répartition des observations sur la période du 1/03 jusqu'au 31/07 :
+
+```{r time_scale,include=TRUE,echo=FALSE}
+par(mfrow=c(1,2))
+hist(epoc.court.in$Jour_de_l_annee, xlab="Jour de l'année",ylab="Nombre d'observations",main=NULL)
+hist(epoc.court.in$Mois,xlab="Mois",ylab="Nombre d'observations",main=NULL)
+par(mfrow=c(1,1))
+```
+
+  On observe une disparité de la répartition des observations sur la période. Les mois de mars, avril et mai sont plus échantillonnés que les mois de juin et juillet.
+  Après cela, j'ai regardé comment la diversité et l'abondance se comportaient selon les jours de l'année.
+  
+```{r time_scale.gam, include = TRUE, cache=TRUE}
+mod.jour.ab <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML") 
+# "nb" -> negative binomial
+mod.jour.dv <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML")
+```
+
+```{r result_time_scale.gam,include=TRUE,echo=FALSE}
+par(mfrow=c(1,2))
+plot(mod.jour.ab,xlab="Jour de l'année",main="GAM: Abondance ~ Jours")
+plot(mod.jour.dv,xlab="Jour de l'année",main="GAM: Diversité ~ Jours")
+par(mfrow=c(1,1))
+```
+  
+  On observe que l'abondance varie peu durant la période de fort échantillonnage et que la diversité diminue au cours de cette même période. Les pics dans les deux graphiques en fin de période peuvent être liés à la diminution de l'effort déchantillonnage.
+
+### Phase exploratoire : Répartition temporelle (Heure de début d'observation)
+  Ici, je regarde comment les observations sont réparties selon l'heure de début d'observation et l'influence de cette variable sur l'abondance/diversité des EPOC.
+  
+```{r hour_scale,include = TRUE,cache=TRUE}
+mod.tp.ab <- mgcv::gam(Abondance_liste ~ s(Heure_debut), data=epoc.court.in, family="nb",method="REML")
+mod.tp.dv <- mgcv::gam(Diversite_liste ~ s(Heure_debut), data=epoc.court.in, family="nb",method="REML")
+```  
+```{r result_hour_scale,include=TRUE,echo=FALSE}
+hist(epoc.court.in$Heure_debut,xlab="Heure de début d'écoute",ylab="Nombre d'observations",main="Histogramme: Observations ~ Heure de début d'écoute")
+par(mfrow=c(1,2))
+plot(mod.tp.ab,xlab="Heure de début d'écoute",main="GAM: Abondance ~ Heure")
+plot(mod.tp.dv,xlab="Heure de début d'écoute",main="GAM: Diversité ~ Heure")
+par(mfrow=c(1,1))
+```  
+
+### Phase exploratoire : Répartition selon le temps d'écoute
+  Il s'agit là de voir si la plupart des participants au programme EPOC ont respecté les consignes et si un écart à ces consignes entrainait une variation importante des indices.
+  
+```{r listening_scale,include = TRUE,cache=TRUE}
+mod.tpec.ab <- mgcv::gam(Abondance_liste ~ s(Tps_ecoute), data=epoc.court.in, family="nb",method="REML")
+mod.tpec.dv <- mgcv::gam(Diversite_liste ~ s(Tps_ecoute), data=epoc.court.in, family="nb",method="REML")
+```   
+
+```{r result_listening_scale,include = TRUE, echo=FALSE}
+hist(epoc.court.in$Tps_ecoute, xlab="Temps d'écoute",ylab="Nombre d'observations",main = "Histogramme: Observations ~ Temps d'écoute")
+par(mfrow=c(1,2))
+plot(mod.tpec.ab,xlab="Temps d'écoute",main="GAM: Abondance ~ Temps")
+plot(mod.tpec.dv,xlab="Temps d'écoute",main="GAM: Diversité ~ Temps")
+par(mfrow=c(1,1))
+```  
+
+  On observe que les EPOC avec un temps d'écoute plus long (> 8 minutes) possède une abondance plus élevée que les EPOC de 5 minutes tout en ayant une diversité similaire.
+
+```{r other_listening_scale, include=TRUE,echo=FALSE}
+cat("Pour information, les EPOC de plus de 8 minutes correspondent à",length(which(epoc.court.in$Tps_ecoute > 0.08)),"observations du jeu de donnée, soit :",round(length(which(epoc.court.in$Tps_ecoute > 0.08))/nrow(epoc.court.in)*100,2),"% des observations")
+```
+
+### Phase exploratoire : Répartition selon l'altitude
+  Dans cette partie, je me concentre sur la répartition des observations selon l'altitude et les variations des indices selon cette variable.
+  
+```{r altitude_scale, include=TRUE,cache=TRUE}
+mod.alt.ab <- mgcv::gam(Abondance_liste ~ s(Altitude), data=epoc.court.in, family="nb",method="REML")
+mod.alt.dv <- mgcv::gam(Diversite_liste ~ s(Altitude), data=epoc.court.in, family="nb")
+```
+
+```{r result_altitude_scale,include=TRUE,echo=FALSE}
+hist(epoc.court.in$Altitude,xlab="Altitude",ylab="Nombre d'observations",main="Histogramme: Observations ~ Altitude")
+par(mfrow=c(1,2))
+plot(mod.alt.ab,xlab="Altitude",main="GAM : Abondance selon l'altitude")
+plot(mod.alt.dv,xlab="Altitude",main="GAM : Diversité selon l'altitude")
+par(mfrow=c(1,1))
+```
+
+  On observe que la majorité des observations ont été réalisé entre 0 et 1000 mètres d'altitude. L'abondance diminue légèrement avec l'altitude durant cet interval, alors que la diversité reste constante. Après les 1000 mètres, on a une tendance globale à la diminution pour les deux indices et un fort pic d'abondance pour les altitudes très élévées.
+
+```{r other_altitude_scale,include=TRUE,echo=FALSE}
+cat("Pour information, les EPOC réalisées à plus de 2000 mètres d'altitude correspondent à",length(which(epoc.court.in$Altitude > 2000)),"observations du jeu de donnée, soit :",round(length(which(epoc.court.in$Altitude > 2000))/nrow(epoc.court.in)*100,2),"% des observations")
+```
+
+### Phase exploratoire : Effort d'échantillonnage --> Observateurs
+
+```{r ,include=TRUE,echo=FALSE}
+ggplot(epoc.court.in,aes(x=Observateur)) + geom_histogram(stat="count") + # gros biais d'effort d'echantillonnage
+                xlab("Observateur") + ylab("Nombre d'observations") + ggtitle("Nombres d'observations selon les observateurs")
+```
+  
+  On observe une forte disparité dans le nombre d'observations réalisées par observateurs. A savoir que, 5 observateurs regroupaient plus de 80.000 observations soit ~1/3 du jeu de données.
+  Jérémy m'a proposé de comparer la diversité et les abondances observées par ces 5 observateurs, jugés de qualité, avec le reste du pool d'observateurs pour voir s'il y avait des différences.
+
+```{r map_observ, include=TRUE,echo=FALSE}
+o <- grep("Jean-Pierre Matérac|Claude Falke|Romain Riols|François Bouzendorf|Thibault Brugerolle",epoc.court.in$Observateur)
+
+big.ops <- epoc.court.in[o,c("Lon_WGS84","Lat_WGS84","Observateur")]
+big.ops[big.ops$Observateur == "Jean-Pierre Matérac","col"] <- "red"
+big.ops[big.ops$Observateur == "Claude Falke","col"] <- "green"
+big.ops[big.ops$Observateur == "Romain Riols","col"] <- "darkcyan"
+big.ops[big.ops$Observateur == "François Bouzendorf","col"] <- "purple"
+big.ops[big.ops$Observateur == "Thibault Brugerolle","col"] <- "deeppink2"
+                          
+data(wrld_simpl)
+plot(wrld_simpl,xlim=c(-5,13),ylim=c(41,53),main="Répartition des observations des 5 plus gros contributeurs")
+big.ops.SP <- SpatialPointsDataFrame(coords = big.ops[,c("Lon_WGS84","Lat_WGS84")], data = big.ops, proj4string = raster::crs(wrld_simpl))
+plot(big.ops.SP,add=TRUE,col=big.ops.SP$col)
+```
+
+#### <u>Comparaison d'abondance selon la contribution des observateurs dans le jeu de donnée</u>
+  Dans cette partie, j'ai regroupé les 5 plus grands observateurs et j'ai comparé l'abondance et la diversité qu'ils avaient trouvées par rapport aux autres observateurs.
+
+
+```{r comp_obs, include=TRUE,echo=FALSE}
+o <- grep("Jean-Pierre Matérac|Claude Falke|Romain Riols|François Bouzendorf|Thibault Brugerolle",epoc.court.in$Observateur)
+
+epoc.obs <- epoc.court.in
+epoc.obs$Qualification_obs <- 0
+epoc.obs[o,"Qualification_obs"] <- "Grande_contribution"
+epoc.obs[-o,"Qualification_obs"] <- "Contribution_normale"
+
+# subsetting des dtf
+    big.obs <- epoc.court.in[o,]
+    small.obs <- epoc.court.in[-o,]
+
+    div.big.obs <- big.obs$Diversite_liste
+    div.small.obs <- small.obs$Diversite_liste
+                            
+    abon.big.obs <- big.obs$Abondance_liste
+    abon.small.obs <- small.obs$Abondance_liste
+                        
+ggplot(epoc.obs) + geom_boxplot(aes(x=Qualification_obs,y=Diversite_liste),notch=TRUE) +
+  xlab("Contribution des observateurs") + ylab("Diversite des EPOC")
+```
+```{r,include=FALSE}
+wilc.dv.obs <- wilcox.test(div.big.obs,div.small.obs) # grand contributeur trouve plus de diversite
+```
+
+```{r, include=TRUE}
+wilc.dv.obs
+```
+
+```{r,include=TRUE,echo=FALSE}                        
+ggplot(epoc.obs,aes(x=Qualification_obs,y=Abondance_liste)) + geom_boxplot(outlier.shape = NA,notch=TRUE) +
+ xlab("Contribution des observateurs") + ylab("Abondance des EPOC") +
+ scale_y_continuous(limits = quantile(epoc.obs$Abondance_liste, c(0.1,0.9)))
+```
+```{r,include=FALSE}
+wilc.ab.obs <- wilcox.test(abon.big.obs,abon.small.obs) 
+```
+
+```{r, include=TRUE}
+wilc.ab.obs
+```
+
+  On observe qu'il y a une différence significative dans les données d'abondance et de diversité renseignées par les deux groupes d'observateurs.
+  
+#### <u>Note supplémentaire à la section:</u>
+  Vis-à-vis de cette grande hétérogénéité dans la prise de mesure, j'ai regardé le nombre d'EPOC réalisé par observateurs.
+```{r, include=TRUE, echo=FALSE}
+id.obs <- unique(as.character(epoc.court.in$Observateur)) # formation d'un vecteur regroupant les observateurs
+i <- 1
+                 while(i <= length(id.obs)){ # lecture d'une boucle sur le vecteur des observateurs
+                   y <- unique(epoc.court.in[epoc.court.in$Observateur == id.obs[i],"ID_liste"]) # detection des ID_liste (=EPOC) realise par l'observateur i
+                   epoc.court.in[epoc.court.in$Observateur == id.obs[i],"Nb_EPOC_par_observateur"] <- length(y) # ajout du nombre d'EPOC realise par l'observateur dans une nouvelle colonne du jeu de donnees EPOC
+                   
+                   
+                   i  <- i+1
+                 }
+                 
+nb.epoc_obs <- epoc.court.in[,c("Observateur","Nb_EPOC_par_observateur")] # formation d'un dtf contenant des informations sur les observateurs et leur nombre d'epoc realise
+l <- duplicated(nb.epoc_obs$Observateur) # detection des lignes dupliquees
+nb.epoc_obs <- nb.epoc_obs[which(l == FALSE),] # selection des lignes n'apparaissant qu'une fois
+nb.epoc_obs <- nb.epoc_obs[order(nb.epoc_obs$Nb_EPOC_par_observateur),] # optionnel : trie du dtf de facon decroissante
+  # IDEE de romain : tirer 4/5 EPOC par observateur pour les utiliser comme calibrage des outputs de modeles
+     # Realisable ? ==> Cb d'observateur ont - de 5 EPOC
+      obs.less5 <- which(nb.epoc_obs[,"Nb_EPOC_par_observateur"] <= 5)
+      cat(length(obs.less5),"observateurs ont réalisé moins de 5 EPOC, ce qui représente :",round(length(obs.less5)/length(id.obs)*100,3),"% des observateurs")
+```
+
+### Phase exploratoire : Hétérogénéité spatiale de l'échantillonnage
+  Ici, je concentre sur la répartition du nombre d'observation et d'EPOC réalisé à l'échelle du département et des communes.
+  
+#### <u>Echelle départementale:</u>
+```{r initia_dep,include=TRUE, echo=FALSE}
+carte.dep <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp")
+dep <- st_as_sf(epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+                     
+carte.dep$Obs_count <- lengths(st_intersects(carte.dep,dep)) # Decompte du nombre de points d'observation par departement
+
+nb.epoc_dep <- epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Departement","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
+                     
+epoc_dep <- aggregate(ID_liste ~ Departement, data=nb.epoc_dep, FUN=length_unique)
+colnames(epoc_dep)[2] <- "Nb_EPOC_dep"
+                     
+colnames(carte.dep)[7] <- "Departement"
+carte.dep <- merge(carte.dep,epoc_dep,by="Departement",all.x=TRUE) # Ajout des donnees de comptage d'epoc par departement dans l'objet sf
+``` 
+
+```{r map_dep1, include=TRUE,echo=FALSE}
+# Observations par département
+  tm_shape(carte.dep) +
+    tm_fill("Obs_count",
+                style="fixed",breaks = c(0,1,20,150,300,750,1000,1500,2000,10000,30000,75000),
+                palette="BuGn",
+                title="Nombre \nd'observations \npar département",
+                lwd=0.25,
+                main.title="Répartition spatiale des observations par département") +
+    tm_borders(alpha=0.2) +
+    tm_layout(main.title = "Répartition des observations par département")
+```
+
+
+
+```{r map_dep2, include=TRUE,echo=FALSE}
+# EPOC par département
+   tm_shape(carte.dep) +
+    tm_fill(col="Nb_EPOC_dep",
+             style="fixed", breaks =c(1,10,25,50,75,300,1500,3000,5453),
+             palette="BuGn",
+             title = "Nombre \nd'observation \npar departements",
+             colorNA = "burlywood2") +
+    tm_borders(col=NA,lwd=0,alpha=0.50) +
+    tm_layout(main.title = "Répartition des EPOC par département")
+   
+
+```
+
+  A noter, une différence dans les deux cartes (des départements ayant des observations ne contiennent pas d'EPOC), cela peut venir d'une non-concordance des noms de départements entre mon objet de spatial et les noms de départements du jeu de données (A modifier à l'avenir)
+  
+Les départements n'ayant aucune EPOC/observations sont : Tarn-et-Garonne et l'Aisne
+  
+Ce qu'on peut tirer de ces deux cartes est qu'il y a une forte hétérogénéité aux niveaux départementale.
+
+```{r map_dep3, include=TRUE,echo=FALSE}
+cat("Nombre de département :\n - Ayant entre 1 et 10 EPOC :",length(which(carte.dep$Nb_EPOC_dep <= 10)),
+                         "\n - Ayant entre 10 et 25 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 10 & carte.dep$Nb_EPOC_dep <= 25)),
+                         "\n - Ayant entre 25 et 50 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 25 & carte.dep$Nb_EPOC_dep <= 50)),
+                         "\n - Ayant entre 50 et 75 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 50 & carte.dep$Nb_EPOC_dep <= 75)),
+                         "\n - Ayant entre 75 et 300 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 75 & carte.dep$Nb_EPOC_dep <= 300)),
+                         "\n - Ayant entre 300 et 1500 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 300 & carte.dep$Nb_EPOC_dep <= 1500)),
+                         "\n - Ayant entre 1500 et 3000 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 1500 & carte.dep$Nb_EPOC_dep <= 3000)),
+                         "\n - Ayant entre 3000 et 5453 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 3000 & carte.dep$Nb_EPOC_dep <= 5453)),
+                         "\n - Sans information : ",length(which(is.na(carte.dep$Nb_EPOC_dep))))
+```
+
+#### <u>Echelle communale:</u>
+
+```{r init_dep,include=TRUE, echo=FALSE}
+carte.commun <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm5.shp")
+colnames(carte.commun)[13] <- "Commune"
+commun <- st_as_sf(epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+
+carte.commun$Obs_count <- lengths(st_intersects(carte.commun,commun)) # Decompte du nombre de points d'observation par departement
+                       
+nb.epoc_commun <- epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Commune","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
+
+epoc_comm <- aggregate(ID_liste ~ Commune, data=nb.epoc_commun, FUN=length_unique)
+colnames(epoc_comm)[2] <- "Nb_EPOC_commune"
+                         
+carte.commun <- merge(carte.commun,epoc_comm,by="Commune",all.x=TRUE) # Ajout des donnees de comptage d'epoc par commune dans l'objet sf
+                        
+                       
+```
+
+```{r map_com1, include=TRUE,echo=FALSE}
+tm_shape(carte.commun) +
+ tm_fill(col="Obs_count",
+         style="fixed",breaks=c(0,1,20,50,200,500,1500,3500,7000,12000,15500),
+         palette="-Greys",
+         title = "Nombre \nd'observation \npar communes")+
+ tm_borders(col=NA,lwd=0,alpha=0.05) +
+ tm_layout(main.title = "Répartition des observations par communes")
+```
+
+```{r map_com2, include=TRUE,echo=FALSE}
+tm_shape(carte.commun) +
+ tm_fill(col="Nb_EPOC_commune",
+         style="fixed", breaks =c(1,2,5,25,100,350,750),
+         palette="BuGn",
+         title = "Nombre \nd'observation \npar communes",
+         colorNA = "burlywood2") +
+ tm_borders(col=NA,lwd=0,alpha=0.05)
+```
+
+Au niveau des communes, la fragmentation est encore plus frappante, quelques informations complémentaires :
+
+```{r map_com3, include=TRUE,echo=FALSE}
+cat("Nombre de communes :\n - Ayant entre 1 et 2 EPOC :",length(which(carte.commun$Nb_EPOC_commune <= 2)),
+                              "\n - Ayant entre 2 et 5 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 2 & carte.commun$Nb_EPOC_commune <= 5)),
+                              "\n - Ayant entre 5 et 25 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 5 & carte.commun$Nb_EPOC_commune <= 25)),
+                              "\n - Ayant entre 25 et 100 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 25 & carte.commun$Nb_EPOC_commune <= 100)),
+                              "\n - Ayant entre 100 et 350 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 100 & carte.commun$Nb_EPOC_commune <= 350)),
+                              "\n - Ayant entre 350 et 750 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 350 & carte.commun$Nb_EPOC_commune <= 750)),
+                              "\n - Sans information : ",length(which(is.na(carte.commun$Nb_EPOC_commune))))
+```
+
+
+### Debut d'etude de qualite des EPOC
+  Dans cette partie l'idée était de juger de la qualité des EPOC (notamment des EPOC ayant peu de diversité : 4 espèces détectées). Pour ce faire j'ai déterminé des espèces "communes" comme étant les espèces les plus détectées sur toutes les EPOC réalisées.
+```{r contin_tabl,include=TRUE,echo=TRUE}
+
+low.div <- which(epoc.court.in$Diversite_liste <= 4)
+low.div.liste <- unique(epoc.court.in[low.div,"ID_liste"]) # 1615 EPOC avec moins de 4 especes repertoriees ( = 6751 observations, 2,406%)
+
+# table de contingence espece / EPOC (ID_liste)
+  esp_liste.table <- table(epoc.court.in$ID_liste,epoc.court.in$Nom_espece)
+  nb.epoc <- nrow(esp_liste.table)
+  esp_div.by.liste <- colSums(esp_liste.table)
+  esp_div.by.liste <- sort(esp_div.by.liste,decreasing = T)
+```
+
+```{r result_contin, include=FALSE,echo=FALSE}
+plot(esp_div.by.liste, xlab="Index du nom d'espèce", ylab="Nombre d'observations uniques")
+```
+
+```{r choice_cont, include=TRUE,echo=TRUE}
+# J'ai decidé de prendre les espèces étant présentes dans 75% des EPOC
+    esp_communes <- which(esp_div.by.liste >= nb.epoc*0.25) # selection des especes vu dans 75% des EPOCs
+    esp_communes <- esp_div.by.liste[esp_communes]
+```
+
+```{r result_choice, include=TRUE,echo=FALSE}
+cat("Liste des espèces 'communes' :\n\n")
+       i <- 1
+        while(i <= length(esp_communes)){
+          cat(names(esp_communes[i]),"\n")
+          
+          i <- i+1
+        }
+```
+
+```{r detec_bad, include=TRUE,echo=TRUE}
+# Detection des EPOC de mauvaise qualite (=absence d'especes "communes") ----
+  epoc.low.div <- epoc.court.in[low.div,]
+  esp.temp <- grepl(pattern=names(esp_communes[1]),epoc.low.div[,"Nom_espece"]) # recherche du nom de la 1ere espece communes dans toutes les observations d'EPOC de faible diversite
+   esp.com.obs <- which(esp.temp == TRUE) # formation d'un vecteur regroupant l'ensemble des lignes contenant les especes communes
+                        
+   i <- 2 # indice de lecture de boucle 
+   while(i <= length(esp_communes)){ # boucle de lecture du vecteur contenant le nom d'especes communes
+                            
+     esp.temp <- grepl(pattern=names(esp_communes[i]),epoc.low.div[,"Nom_espece"])
+     esp.temp1 <- which(esp.temp == TRUE)
+     esp.com.obs <- append(esp.temp1,esp.com.obs) # ajout des observations ayant apercu la i eme especes communes
+                            
+     i <- i+1
+   }
+                        
+   esp.com.obs <- unique(esp.com.obs) # toutes les lignes possedant au moins une espece communes
+                        
+# detection des ID_liste de faible diversite contenant au moins une observation d'especes communes
+  id <- epoc.low.div[esp.com.obs,"ID_liste"]
+  id <- unique(id)
+# Besoin de retrouver l'ensemble des observations de ces EPOC (faible diversite, mais presence d'au moins une espece communes)
+  u.tmp <- which(epoc.low.div$ID_liste == id[1])
+  u.end <- u.tmp
+                            
+  i <- 2
+  while(i <= length(id)){
+    u.tmp <- which(epoc.low.div$ID_liste == id[i])
+    u.end <- append(u.end,u.tmp) # toutes les observations dont les EPOC contiennent au moins une espece communes
+                                  
+    i <- i+1
+  }
+# detection des ID_liste ne contenant aucune observation d'espece communes
+   bad.in.low.div<- epoc.low.div[-u.end,] # dtf contenant les EPOC de moins de 4 observations ne prennant pas en compte les especes "communes" du jeu de donnees
+   # = 526 observations
+```
+
+```{r detect_bad_sum, include=TRUE,echo=FALSE}
+cat("Cela représente :\n -",nrow(bad.in.low.div),"Observations\n -",
+    length(unique(bad.in.low.div$ID_liste)),"EPOC, soit",round(length(bad.in.low.div$ID_liste)/length(epoc.court.in$ID_liste)*100,3),"% des EPOC")
+```
+
+Les EPOC que j'ai qualifié de mauvaise qualité le sont-elles réellement où représentent-elles des milieux particuliers (caractériser par des espèces rares) ?
+
+```{r detect_bad_suplmnt, include=TRUE, echo=FALSE}
+# EPOC de faible diversite sans especes communes ==> mauvaise EPOC ou EPOC dans des milieux specifiques ?
+   # listes des especes trouvees par ces EPOC :
+       bad.in.low.div_esp <- unique(bad.in.low.div$Nom_espece)
+       bad.in.low.div_esp <- droplevels(bad.in.low.div_esp) # 120 especes
+       
+       # boucle de lecture des especes retrouve unqiuement dans des listes de faible diversite
+       cat("Liste des espèces retrouvée uniquement dans ces EPOC : \n\n")
+       i <- 1
+        while(i <= length(bad.in.low.div_esp)){
+          cat(as.character(bad.in.low.div_esp[i]),"\n")
+          
+          i <- i+1
+        }
+       
+```
+
+
+```{r detect_bad_suplmnt2, include=TRUE, echo=FALSE}                                      
+# cartographie des EPOC faible diversite sans presence d'especes communes
+       carte.dep <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp")
+       bad.in.low.div.sf <- st_as_sf(bad.in.low.div[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+       
+       ggplot(carte.dep) + 
+        geom_sf(color="black") +
+        geom_sf(data=bad.in.low.div.sf,color="red",shape=20,size=2.5) +
+        ggtitle("Localisation des EPOC d'espèces 'rares'")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
