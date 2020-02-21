@@ -267,6 +267,12 @@ nb.epoc_obs <- nb.epoc_obs[order(nb.epoc_obs$Nb_EPOC_par_observateur),] # option
   
 #### <u>Echelle départementale:</u>
 ```{r initia_dep,include=TRUE, echo=FALSE}
+length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+}
+
 carte.dep <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp")
 dep <- st_as_sf(epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
                      
@@ -331,6 +337,12 @@ cat("Nombre de département :\n - Ayant entre 1 et 10 EPOC :",length(which(carte
 #### <u>Echelle communale:</u>
 
 ```{r init_dep,include=TRUE, echo=FALSE}
+length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+}
+
 carte.commun <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm5.shp")
 colnames(carte.commun)[13] <- "Commune"
 commun <- st_as_sf(epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
