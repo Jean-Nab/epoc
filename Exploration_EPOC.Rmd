@@ -27,6 +27,9 @@ library(tmap) ; library(tmaptools)
     # tableau court dans la periode 1/03 - 31/07
                 epoc.court.in <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),header=T,sep="\t", dec=","
                                     , encoding="UTF-8",quote="")
+
+        epoc.court.in$Departement <- gsub("\\","",epoc.court.in$Departement,fixed=TRUE) # 3 departements avec des \\ inclus
+
       # Fonctions de tri des donnees
         time_to_decimal <- function(x) {
           x <- hm(x, quiet = TRUE)
@@ -91,7 +94,7 @@ par(mfrow=c(1,1))
   On observe une disparité de la répartition des observations sur la période. Les mois de mars, avril et mai sont plus échantillonnés que les mois de juin et juillet.
   Après cela, j'ai regardé comment la diversité et l'abondance se comportaient selon les jours de l'année.
   
-```{r time_scale.gam, include = TRUE, cache=TRUE}
+```{r time_scale.gam, include = TRUE, cache=TRUE,echo=TRUE}
 mod.jour.ab <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML") 
 # "nb" -> negative binomial
 mod.jour.dv <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML")
@@ -109,7 +112,7 @@ par(mfrow=c(1,1))
 ### Phase exploratoire : Répartition temporelle (Heure de début d'observation)
   Ici, je regarde comment les observations sont réparties selon l'heure de début d'observation et l'influence de cette variable sur l'abondance/diversité des EPOC.
   
-```{r hour_scale,include = TRUE,cache=TRUE}
+```{r hour_scale,include = TRUE,cache=TRUE,echo=TRUE}
 mod.tp.ab <- mgcv::gam(Abondance_liste ~ s(Heure_debut), data=epoc.court.in, family="nb",method="REML")
 mod.tp.dv <- mgcv::gam(Diversite_liste ~ s(Heure_debut), data=epoc.court.in, family="nb",method="REML")
 ```  
@@ -124,7 +127,7 @@ par(mfrow=c(1,1))
 ### Phase exploratoire : Répartition selon le temps d'écoute
   Il s'agit là de voir si la plupart des participants au programme EPOC ont respecté les consignes et si un écart à ces consignes entrainait une variation importante des indices.
   
-```{r listening_scale,include = TRUE,cache=TRUE}
+```{r listening_scale,include = TRUE,cache=TRUE,echo=TRUE}
 mod.tpec.ab <- mgcv::gam(Abondance_liste ~ s(Tps_ecoute), data=epoc.court.in, family="nb",method="REML")
 mod.tpec.dv <- mgcv::gam(Diversite_liste ~ s(Tps_ecoute), data=epoc.court.in, family="nb",method="REML")
 ```   
@@ -146,7 +149,7 @@ cat("Pour information, les EPOC de plus de 8 minutes correspondent à",length(wh
 ### Phase exploratoire : Répartition selon l'altitude
   Dans cette partie, je me concentre sur la répartition des observations selon l'altitude et les variations des indices selon cette variable.
   
-```{r altitude_scale, include=TRUE,cache=TRUE}
+```{r altitude_scale, include=TRUE,cache=TRUE,echo=TRUE}
 mod.alt.ab <- mgcv::gam(Abondance_liste ~ s(Altitude), data=epoc.court.in, family="nb",method="REML")
 mod.alt.dv <- mgcv::gam(Diversite_liste ~ s(Altitude), data=epoc.court.in, family="nb")
 ```
@@ -316,8 +319,6 @@ carte.dep <- merge(carte.dep,epoc_dep,by="Departement",all.x=TRUE) # Ajout des d
 
 ```
 
-  A noter, une différence dans les deux cartes (des départements ayant des observations ne contiennent pas d'EPOC), cela peut venir d'une non-concordance des noms de départements entre mon objet de spatial et les noms de départements du jeu de données (A modifier à l'avenir)
-  
 Les départements n'ayant aucune EPOC/observations sont : Tarn-et-Garonne et l'Aisne
   
 Ce qu'on peut tirer de ces deux cartes est qu'il y a une forte hétérogénéité aux niveaux départementale.
@@ -331,7 +332,7 @@ cat("Nombre de département :\n - Ayant entre 1 et 10 EPOC :",length(which(carte
                          "\n - Ayant entre 300 et 1500 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 300 & carte.dep$Nb_EPOC_dep <= 1500)),
                          "\n - Ayant entre 1500 et 3000 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 1500 & carte.dep$Nb_EPOC_dep <= 3000)),
                          "\n - Ayant entre 3000 et 5453 EPOC :",length(which(carte.dep$Nb_EPOC_dep > 3000 & carte.dep$Nb_EPOC_dep <= 5453)),
-                         "\n - Sans information : ",length(which(is.na(carte.dep$Nb_EPOC_dep))))
+                         "\n - Sans informations (0 EPOC) : ",length(which(is.na(carte.dep$Nb_EPOC_dep))))
 ```
 
 #### <u>Echelle communale:</u>
@@ -364,9 +365,9 @@ tm_shape(carte.commun) +
  tm_fill(col="Obs_count",
          style="fixed",breaks=c(0,1,20,50,200,500,1500,3500,7000,12000,15500),
          palette="-Greys",
-         title = "Nombre \nd'observation \npar communes")+
+         title = "Nombre \nd'observations \npar communes")+
  tm_borders(col=NA,lwd=0,alpha=0.05) +
- tm_layout(main.title = "Répartition des observations par communes")
+ tm_layout(main.title = "Observations par communes")
 ```
 
 ```{r map_com2, include=TRUE,echo=FALSE}
@@ -374,9 +375,10 @@ tm_shape(carte.commun) +
  tm_fill(col="Nb_EPOC_commune",
          style="fixed", breaks =c(1,2,5,25,100,350,750),
          palette="BuGn",
-         title = "Nombre \nd'observation \npar communes",
+         title = "Nombre \nd'EPOC \npar communes",
          colorNA = "burlywood2") +
- tm_borders(col=NA,lwd=0,alpha=0.05)
+ tm_borders(col=NA,lwd=0,alpha=0.05)+
+ tm_layout(main.title = "Nb d'EPOC par communes")
 ```
 
 Au niveau des communes, la fragmentation est encore plus frappante, quelques informations complémentaires :
@@ -388,7 +390,7 @@ cat("Nombre de communes :\n - Ayant entre 1 et 2 EPOC :",length(which(carte.comm
                               "\n - Ayant entre 25 et 100 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 25 & carte.commun$Nb_EPOC_commune <= 100)),
                               "\n - Ayant entre 100 et 350 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 100 & carte.commun$Nb_EPOC_commune <= 350)),
                               "\n - Ayant entre 350 et 750 EPOC :",length(which(carte.commun$Nb_EPOC_commune > 350 & carte.commun$Nb_EPOC_commune <= 750)),
-                              "\n - Sans information : ",length(which(is.na(carte.commun$Nb_EPOC_commune))))
+                              "\n - Sans informations (0 EPOC) : ",length(which(is.na(carte.commun$Nb_EPOC_commune))))
 ```
 
 
@@ -397,7 +399,7 @@ cat("Nombre de communes :\n - Ayant entre 1 et 2 EPOC :",length(which(carte.comm
 ```{r contin_tabl,include=TRUE,echo=TRUE}
 
 low.div <- which(epoc.court.in$Diversite_liste <= 4)
-low.div.liste <- unique(epoc.court.in[low.div,"ID_liste"]) # 1615 EPOC avec moins de 4 especes repertoriees ( = 6751 observations, 2,406%)
+low.div.liste <- unique(epoc.court.in[low.div,"ID_liste"])
 
 # table de contingence espece / EPOC (ID_liste)
   esp_liste.table <- table(epoc.court.in$ID_liste,epoc.court.in$Nom_espece)
@@ -460,7 +462,6 @@ cat("Liste des espèces 'communes' :\n\n")
   }
 # detection des ID_liste ne contenant aucune observation d'espece communes
    bad.in.low.div<- epoc.low.div[-u.end,] # dtf contenant les EPOC de moins de 4 observations ne prennant pas en compte les especes "communes" du jeu de donnees
-   # = 526 observations
 ```
 
 ```{r detect_bad_sum, include=TRUE,echo=FALSE}
