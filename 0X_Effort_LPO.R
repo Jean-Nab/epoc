@@ -28,44 +28,7 @@ epoc <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_20
       search.prot <- grep("SHOC|STOC_EPS|STOC_MONTAGNE|STOC_ONF|STOC_SITES|WATERBIRDS",epoc.filt1$Protocole) # Selection des lignes contenant les protocoles a retirer
       epoc.filt2 <- epoc.filt1[-search.prot,] # formation d'un dtf sans les lignes selectionnees
 
-# Prerequis pour la repartition mensuelle ----
-  # manipulation mois -> distinction selon les annees (= Rajout d'un suffixe indiquant l'annee)
-      epoc.filt2$Mois <- gsub("10","Oct",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("11","Nov",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("12","Dec",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("1","Jan",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("2","Fev",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("3","Mar",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("4","Avr",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("5","Mai",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("6","Juin",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("7","Juil",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("8","Aout",epoc.filt2$Mois)
-      epoc.filt2$Mois <- gsub("9","Sep",epoc.filt2$Mois)
-
-
-      # 2017
-        u <- which(epoc.filt2$Annee == 2017)
-        epoc.filt2[u,"Mois"] <- gsub("([a-zA-Z]{1,})","\\1_2017",epoc.filt2[u,"Mois"])
-  
-        
-      # 2018
-        u <- which(epoc.filt2$Annee == 2018)
-        epoc.filt2[u,"Mois"] <- gsub("([a-zA-Z]{1,})","\\1_2018",epoc.filt2[u,"Mois"])
-        
       
-      # 2019
-        u <- which(epoc.filt2$Annee == 2019)
-        epoc.filt2[u,"Mois"] <- gsub("([a-zA-Z]{1,})","\\1_2019",epoc.filt2[u,"Mois"])
-   
-
-
-# Verification
-  y <- duplicated(epoc.filt2$Mois)
-  y2 <- which(y == FALSE)
-  head(epoc.filt2[y2,"Mois"],36)
-
-
 # Repartition mensuelle : calcul du nombre de temps d'ecoute pour chaque liste ----
   epoc3 <- epoc.filt2
   # formation d'une colonne temps d'ecoute
