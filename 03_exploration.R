@@ -20,6 +20,8 @@ library(tmap) ; library(tmaptools)
         epoc.court.in <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),header=T,sep="\t", dec=","
                                     , encoding="UTF-8",quote="")
         
+        epoc.court.in$Departement <- gsub("\\","",epoc.court.in$Departement,fixed=TRUE) # 3 departements avec des \\ inclus
+        
         time_to_decimal <- function(x) {
           x <- hm(x, quiet = TRUE)
           hour(x) + minute(x) / 60
@@ -243,12 +245,15 @@ library(tmap) ; library(tmaptools)
                      nb.epoc_dep2 <- nb.epoc_dep2[which(y == FALSE),]
                      
                      
+                     
+                     # version sans boucle
                      nb.epoc_dep <- epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Departement","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
                      
                      epoc_dep <- aggregate(ID_liste ~ Departement, data=nb.epoc_dep, FUN=length_unique)
                      colnames(epoc_dep)[2] <- "Nb_EPOC_dep"
                      
                      colnames(carte.dep)[7] <- "Departement"
+                     epoc_dep$Departement <- gsub("\\","",epoc_dep$Departement,fixed=TRUE)
                      carte.dep <- merge(carte.dep,epoc_dep,by="Departement",all.x=TRUE) # Ajout des donnees de comptage d'epoc par departement dans l'objet sf
                      
                      qt <- quantile(carte.dep$Nb_EPOC_dep,na.rm = TRUE)
