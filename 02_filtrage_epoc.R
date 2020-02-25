@@ -4,6 +4,7 @@ setwd("C:/git/epoc/data")
 # packages
   library(tidyverse)
   library(stringr)
+  library(plyr)
 
 
 # import data (faire un import a partir du dataset merged 2017-2018-2019)
@@ -70,9 +71,9 @@ setwd("C:/git/epoc/data")
       # Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD"
       # Donc, formation d'un dtf avec les protocoles "GENERIC_BIRD" et ""
         levels(epoc.filt2$Protocole)
-        search.prot <- grep("GENERIC_BIRD|",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
+        search.prot <- grep("SHOC|STOC_EPS|STOC_MONTAGNE|STOC_ONF|STOC_SITES|WATERBIRDS",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
         
-        epoc.filt3 <- epoc.filt2[search.prot,]
+        epoc.filt3 <- epoc.filt2[-search.prot,]
       
       # Enregistrement sur le disque
         write.table(x = epoc.filt3, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_3.txt"),sep="\t",dec=","
@@ -94,6 +95,42 @@ setwd("C:/git/epoc/data")
       # Enregistrement sur le disque
         write.table(x = epoc.filt5, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_5.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+        
+# Retrait des especes doublons par liste -------
+        
+        id.liste <- unique(epoc.filt5$ID_liste) # boucle sur les id_listes
+        
+        epoc.clean <- data.frame() # formation d'un dtf receuillant uniquement les epoc ayant des doublons d'espece (apres un nettoyage)
+        i <- 1
+        while(i <= length(id.liste)){ 
+          dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == id.liste[i],] # formation d'un dtf temporaire contenant toutes les observations de la liste i
+          logi <- duplicated(epoc.filt5[epoc.filt5$ID_liste == id.liste[i],"Nom_espece"]) # recherche de doublon
+          
+          if(TRUE %in% logi == TRUE){ # si presence de doublon
+            
+            loc.logi <- which(logi == TRUE) # detection des lignes d'especes doublons dans l'epoc
+            dtf.tmp.clean <- aggregate(Nombre~Nom_espece,data=epoc.filt5[epoc.filt5$ID_liste == id.liste[i],],FUN=sum) # somme par nom d'especes differents
+            dtf.tmp.clean2 <- merge(dtf.tmp[-loc.logi,],dtf.tmp.clean,all=T) # 2eme dtf temporaire contenant des toutes les observations (doublons/non-doublons)
+            # nettoyage des especes doublons dans le dtf temporaire
+            p <- duplicated(dtf.tmp.clean2$Nom_espece) # recherche des doublons de nom_d'espece
+            p.tru <- which(p == TRUE) # rq : ligne k = esp A ; ligne k+1 = espece Abis
+            
+            dtf.tmp.clean3 <- dtf.tmp.clean2
+            
+            dtf.tmp.clean3[p.tru,3:ncol(dtf.tmp.clean2)] <- dtf.tmp.clean3[p.tru-1,3:ncol(dtf.tmp.clean2)]
+            dtf.tmp.clean3 <- dtf.tmp.clean3[-(p.tru-1),]
+            
+            epoc.clean <- rbind(epoc.clean,dtf.tmp.clean3)
+            
+            epoc.filt5 <- epoc.filt5[-which(epoc.filt5$ID_liste == id.liste[i]),]
+          }
+          
+          cat(i,"/ ",length(id.liste),"\n")
+          i <- i+1
+        }
+        
+        epoc.filt5 <- rbind(epoc.filt5,epoc.clean)
+        
 
 # Rajout des colonnes Diversite_liste et Abondance_liste servant d'indice pour qualifier la liste ----
     # Idee : travaille de decompte d'espece et d'abondance total pour une liste a la fois (detection des listes & isolement d'une liste ==> calcul des indices)
