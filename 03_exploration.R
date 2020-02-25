@@ -432,21 +432,67 @@ library(tmap) ; library(tmaptools)
                                         
                         
                         
-            # Nb d'EPOC realise par observateur -----
-                
-                plot(as.factor(epoc.court.in$ID_liste),epoc.court.in$Diversite_liste)
-                ggplot(epoc.court.in) + geom_boxplot(aes(x=ID_liste,y=Diversite_liste,group=ID_liste))
+            # Ajout d'un indice d'experience de l'observateur ----------
+    # CONCEPT : Expérience = nombre d'EPOC realise par l'observateur avant l'EPOC etudie
+    # ==> Regroupement des EPOC par observateur (subset par observateur)
+    # ==> Besoin d'ordonne les EPOC selon le temps
+                                 
+        test <- epoc.court.in[,c("Observateur","ID_liste","Jour","Mois","Annee","Date","Heure_de_debut","Minute_de_debut")] 
+          
+        i <- 1
+        while(i <= nrow(test)){
+          
+          
+          # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+          test[i,"date"] <- paste0(test[i,"Jour"],"/",test[i,"Mois"],"/",test[i,"Annee"]," ",test[i,"Heure_de_debut"],":",test[i,"Minute_de_debut"])
+          
+          cat(i,"/ ",nrow(test),"\n")
+          i <- i+1
+        }
+        
+        
+              
+        id.obs <- unique(epoc.court.in$Observateur) # debut de boucle sur les observateurs
+        dtf.exp <- data.frame() # fromation d'un noueau dataframe
+        i <- 1
+        while(i <= length(id.obs)){
+          test.tmp <- test[test$Observateur == id.obs[i],] # subsetting du dtf par observateur
+          liste.dup <- which(duplicated(test.tmp[,"ID_liste"]) == FALSE) # detection des doublons de listes (informations repetees inutiles dans ce cas)
+          test.tmp2 <- test.tmp[liste.dup,] # formation d'un dtf ne contenant toutes les epocs realisees par un l'observateur i
+          
+          test.tmp2$date <- as.POSIXct(test.tmp2$date , format = "%d/%m/%Y %H:%M") # conversion de la colonne date en format horaire (pouvant etre trie)
+          class(test.tmp2)
+          test.tmp2 <- test.tmp2[do.call(order, test.tmp2), ] # tri par ordre croissant selon la date
+          
+          # fromation de la colonne experience
+          test.tmp2$Experience <- c(rep(0:(nrow(test.tmp2)-1))) # ajout de 1 par ligne --> experience augmente avec le nombre d'epoc realisees
+          
+          
+          dtf.exp <- rbind(dtf.exp,test.tmp2)
+          
+          cat(i,"/ ",length(id.obs),"\n")
+          i <- i+1
+        }
+        
+      # Pour le moment : Experience liee a une ID --> besoin de rajouter l'experience a toutes les observations de meme ID_liste
+        id.epoc <- unique(epoc.court.in$ID_liste)
+        i <- 1
+        while(i <= length(id.epoc)){
+          
+          epoc.court.in[epoc.court.in$ID_liste == id.epoc[i],"Experience"] <- dtf.exp[dtf.exp$ID_liste == id.epoc[i],"Experience"]
+
+          cat(i,"/ ",length(id.epoc),"\n")
+          i <- i+1
+        }
+        
+              
+
               
               
               
               
               
-              
-              
-              
-              
-              
-              
+        lp      
               
               
               
