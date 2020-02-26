@@ -166,8 +166,8 @@ epoc3 <- epoc.filt2
 ```
 
 ```{r results_tps2, include=TRUE, echo=FALSE, warning=FALSE}
-  library(ggplot2)
-  library(dplyr)
+rm(epoc.filt1)
+rm(epoc.filt2)
 
   # boxplot des tps d'ecoute selon les mois/annees
       epoc3 %>%
@@ -176,7 +176,7 @@ epoc3 <- epoc.filt2
         geom_boxplot(aes(group=Mois), fill = "darkolivegreen3",outlier.shape = NA) +
         scale_y_continuous(limits = quantile(epoc.liste$Tps_ecoute, c(0.1,0.90)))  +
         facet_wrap(~ Annee, ncol = 3) +
-        labs(title = "Repartition annuel du temps d'écoute d'observations",
+        labs(title = "Repartition annuelle du temps d'écoute d'observations",
              subtitle = "Listes completes faune-france",
              y = "Temps d'ecoute (minutes)",
              x = "Mois") + theme_bw(base_size = 15) +
