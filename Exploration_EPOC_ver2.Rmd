@@ -1,0 +1,295 @@
+---
+title: "Exploration_EPOC_ver2"
+author: "Jean N"
+date: "26/02/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# chemin
+setwd("C:/git/epoc/data")
+
+# packages
+
+library(sf)
+library(maptools)
+library(tmap)
+library(ggplot2)
+library(mgcv)
+
+# import des data/intialisation ----
+    # tableau court dans la periode 1/03 - 31/07
+                epoc.court.in <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),header=T,sep="\t", dec=","
+                                    , encoding="UTF-8",quote="")
+
+        epoc.court.in$Departement <- gsub("\\","",epoc.court.in$Departement,fixed=TRUE) # 3 departements avec des \\ inclus
+```
+
+## <u>Exploration du jeu de données EPOC version n°2</u>
+
+* Revisite du jeu de données après les remarques/idées du lundi 24 février. J'aborderai dans ce document :
+    + Une nouvelle représentation du nombre d'EPOC par communes
+    + L'histogramme / GAM sur la période 5h-17h + le nombre d'observations en dehors de cette période temporel
+    + Carte des observations / EPOC sans les grands observateurs
+    + GAM ~ Jours w/ retrait des fortes abondances + découplage pour chaque année
+  
+### Mis à jour de la carte des EPOC par communes
+
+```{r com_ini,include=FALSE, echo=FALSE,warning=FALSE,message=FALSE}
+length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+}
+
+carte.commun <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm5.shp")
+colnames(carte.commun)[13] <- "Commune"
+commun <- st_as_sf(epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+
+carte.commun$Obs_count <- lengths(st_intersects(carte.commun,commun)) # Decompte du nombre de points d'observation par departement
+                       
+nb.epoc_commun <- epoc.court.in[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Commune","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
+
+epoc_comm <- aggregate(ID_liste ~ Commune, data=nb.epoc_commun, FUN=length_unique)
+colnames(epoc_comm)[2] <- "Nb_EPOC_commune"
+                         
+carte.commun <- merge(carte.commun,epoc_comm,by="Commune",all.x=TRUE) # Ajout des donnees de comptage d'epoc par commune dans l'objet sf
+```
+
+```{r map_com, include=TRUE,echo=FALSE}
+tm_shape(carte.commun) +
+ tm_fill(col="Nb_EPOC_commune",
+         style="fixed", breaks =c(1,2,10,737),
+         palette="BuGn",
+         title = "Nombre \nd'EPOC par \ncommunes",
+         colorNA = "burlywood2") +
+ tm_borders(col=NA,lwd=0,alpha=0.05)+
+ tm_layout(main.title = "Nb d'EPOC par communes \n(All observateurs)")
+```
+
+### Subset du jeu de données selon la période horaire 5-17h
+
+```{r heure_ini,include=TRUE,echo=TRUE}
+epoc.hour <- epoc.court.in[which(epoc.court.in$Heure_de_debut >= 5 & epoc.court.in$Heure_de_debut <= 17),]
+```
+
+```{r heure_ini2, include=TRUE, echo=FALSE}
+cat("Nom d'observations sans appliquer le filtre :",nrow(epoc.court.in),"\nNombre d'observations selon le filtrage 5-17h :",nrow(epoc.hour),"\nNombre d'observations retirées par ce filtrage :",nrow(epoc.court.in) - nrow(epoc.hour))
+```
+
+<u>Maintiens du filtre 5-17h ?</u>
+
+```{r heure_ini3, include=TRUE, echo=FALSE}
+
+hist(epoc.hour$Heure_de_debut,xlab="Heure de début d'écoute",ylab="Nombre d'observations",main="Histogramme: Observations ~ Heure de début d'écoute")
+```
+
+### Cartes de répartitions des observations et des EPOC sans les grands observateurs
+
+  Cette section est à opposer a la section ("Phase exploratoire : Hétérogénéité spatiale de l'échantillonnage") de l'ancien rapport afin de voir les changements de répartition de l'hétérogénéité spatial en l'absence des grands contributeurs.
+  Dans ce cas précis, un grand contributeur est une personne ayant réalisé plus de 6000 observations.
+
+```{r data_ini,include=TRUE,echo=FALSE}
+o <- grep("Jean-Pierre Matérac|Claude Falke|Romain Riols|François Bouzendorf|Thibault Brugerolle|Sébastien Heinerich|Loïc Jomat (lpo)|Emmanuel Véricel",epoc.court.in$Observateur)
+
+epoc.small.obs <- epoc.court.in[-o,]
+cat(nrow(epoc.court.in[o,])," Observations ont été retiré avec 8 observateurs")
+```
+
+##### <u>Echelle départementale:</u>
+```{r initia_dep,include=FALSE, echo=FALSE,warning=FALSE,message=FALSE}
+length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+}
+
+carte.dep <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp")
+dep <- st_as_sf(epoc.small.obs[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+                     
+carte.dep$Obs_count <- lengths(st_intersects(carte.dep,dep)) # Decompte du nombre de points d'observation par departement
+
+nb.epoc_dep <- epoc.small.obs[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Departement","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
+                     
+epoc_dep <- aggregate(ID_liste ~ Departement, data=nb.epoc_dep, FUN=length_unique)
+colnames(epoc_dep)[2] <- "Nb_EPOC_dep"
+                     
+colnames(carte.dep)[7] <- "Departement"
+carte.dep <- merge(carte.dep,epoc_dep,by="Departement",all.x=TRUE) # Ajout des donnees de comptage d'epoc par departement dans l'objet sf
+``` 
+
+```{r map_dep1, include=TRUE,echo=FALSE}
+# Observations par département
+  tm_shape(carte.dep) +
+    tm_fill("Obs_count",
+                style="fixed",breaks = c(0,1,20,150,300,750,1000,1500,2000,10000,18000,27306),
+                palette="BuGn",
+                title="Nombre \nd'observations \npar \ndépartement",
+                lwd=0.25,
+                main.title="Répartition spatiale des observations par département") +
+    tm_borders(alpha=0.2) +
+    tm_layout(main.title = "Observations par département \n(retrait des grands observateurs)")
+```
+
+```{r map_dep2, include=TRUE,echo=FALSE}
+# EPOC par département
+   tm_shape(carte.dep) +
+    tm_fill(col="Nb_EPOC_dep",
+             style="fixed", breaks =c(1,10,25,50,75,300,1500,2884),
+             palette="BuGn",
+             title = "Nombre \nd'EPOC par \ndepartement",
+             colorNA = "burlywood2") +
+    tm_borders(col=NA,lwd=0,alpha=0.50) +
+    tm_layout(main.title = "Nb d'EPOC par département \n(retrait des grands observateurs)")
+
+```
+
+##### <u>Echelle communale:</u>
+
+```{r init_dep,include=FALSE, echo=FALSE,warning=FALSE,message=FALSE}
+length_unique <- function(x){
+          u <- unique(x)
+          o <- length(u)
+          return(o)
+}
+
+carte.commun <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm5.shp")
+colnames(carte.commun)[13] <- "Commune"
+commun <- st_as_sf(epoc.small.obs[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")], coords=c("Lon_WGS84","Lat_WGS84"),crs = 4326)
+
+carte.commun$Obs_count <- lengths(st_intersects(carte.commun,commun)) # Decompte du nombre de points d'observation par departement
+                       
+nb.epoc_commun <- epoc.small.obs[,c("Nom_espece","Jour_de_l_annee","Mois","Heure_debut","ID_liste","Commune","Lon_WGS84","Lat_WGS84","Diversite_liste","Abondance_liste","Tps_ecoute","Altitude","Estimation","Nombre","Observateur")]
+
+epoc_comm <- aggregate(ID_liste ~ Commune, data=nb.epoc_commun, FUN=length_unique)
+colnames(epoc_comm)[2] <- "Nb_EPOC_commune"
+                         
+carte.commun <- merge(carte.commun,epoc_comm,by="Commune",all.x=TRUE) # Ajout des donnees de comptage d'epoc par commune dans l'objet sf
+o <- which(carte.commun$Obs_count == 0)
+carte.commun[o,"Obs_count"] <- NA
+```
+
+```{r map_com1, include=TRUE,echo=FALSE}
+tm_shape(carte.commun) +
+ tm_fill(col="Obs_count",
+         style="fixed",breaks=c(1,2,10,2450),
+         palette="BuGn",
+         title = "Nombre \nd'observations \npar \ncommunes",
+         colorNA = "burlywood2")+
+ tm_borders(col=NA,lwd=0,alpha=0.05) +
+ tm_layout(main.title = "Observations par communes \n(retrait des grands observateurs)")
+```
+
+```{r map_com2, include=TRUE,echo=FALSE}
+tm_shape(carte.commun) +
+ tm_fill(col="Nb_EPOC_commune",
+         style="fixed", breaks =c(1,2,5,25,75,180),
+         palette="BuGn",
+         title = "Nombre \nd'EPOC \npar \ncommunes",
+         colorNA = "burlywood2") +
+ tm_borders(col=NA,lwd=0,alpha=0.05)+
+ tm_layout(main.title = "Nb d'EPOC par communes \n(retrait des grands observateurs)")
+```
+
+
+
+### GAM ~ Jours en retirant les observations avec de fortes abondances
+Ici, j'ai considéré des observations de fortes abondances comme étaant des obserevations ayant indiquées plus de 250 individus.
+```{r retrait_huge_ab, include=TRUE,echo=FALSE,warning=FALSE}
+o <- which(epoc.court.in$Abondance_liste >= 250)
+epoc.low.ab <- epoc.court.in[-o,]
+
+epoc.low.ab.liste.id  <- which(duplicated(epoc.low.ab$ID_liste) == FALSE) # detection des 1eres lignes de chaque epoc
+epoc.low.ab.liste <- epoc.low.ab[epoc.low.ab.liste.id,]
+
+cat("Nom d'observations avant retrait :",nrow(epoc.court.in),"\nNombre d'observations en retirant les fortes abondances :",nrow(epoc.low.ab),"\nNombre d'observations retirées :",nrow(epoc.court.in) - nrow(epoc.low.ab),"\nEquivalence en nombre d'EPOC retirées :",length(unique(epoc.court.in$ID_liste))-length(unique(epoc.low.ab$ID_liste)))
+
+ggplot(epoc.low.ab.liste,aes(x=Abondance_liste)) + geom_histogram(stat="count") +
+  xlab("Mesure d'abondance") + ylab("Nombre d'EPOC") + ggtitle("Histogramme : Répartition des mesures d'abondances dans les listes")
+```
+
+
+```{r gam_jour_prep, include=TRUE,echo=TRUE}
+# GAM : Abondance/Diversité ~ Jours [toutes années confondues]
+mod.jour.ab <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML") 
+mod.jour.dv <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML")
+
+# GAM des Abondances selon les jours, sur les 3 années séparés
+# 2017
+  an2017 <- which(epoc.low.ab$Annee == 2017)
+  epoc.low.ab_2017 <- epoc.low.ab[an2017,]
+    mod.jour.ab_2017 <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2017, family="nb",method="REML") 
+    mod.jour.dv_2017 <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2017, family="nb",method="REML")
+    
+# 2018
+  an2018 <- which(epoc.low.ab$Annee == 2018)
+  epoc.low.ab_2018 <- epoc.low.ab[an2018,]
+    mod.jour.ab_2018 <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2018, family="nb",method="REML") 
+    mod.jour.dv_2018 <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2018, family="nb",method="REML")
+    
+# 2019
+  an2019 <- which(epoc.low.ab$Annee == 2019)
+  epoc.low.ab_2019 <- epoc.low.ab[an2019,]
+    mod.jour.ab_2019 <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2019, family="nb",method="REML") 
+    mod.jour.dv_2019 <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.low.ab_2019, family="nb",method="REML")
+```
+
+##### <u>GAM ~ Jour : Toutes les années</u>
+```{r gam_jour, include=TRUE, echo=FALSE}
+cat(nrow(epoc.low.ab)," Observations sont prises en compte")
+
+hist(epoc.low.ab$Jour_de_l_annee, xlab="Jours de l'année",ylab="Nombre d'observations"
+     , main="Histogramme : Observations ~ Jours de l'année")
+
+par(mfrow=c(1,2))
+plot(mod.jour.ab,xlab="Jour de l'année",main="GAM: Abondance ~ Jours")
+plot(mod.jour.dv,xlab="Jour de l'année",main="GAM: Diversité ~ Jours")
+par(mfrow=c(1,1))
+```
+
+##### <u>GAM ~ Jour : Pour l'année 2017</u>
+```{r gam_jour_2017, include=TRUE, echo=FALSE}
+
+cat(nrow(epoc.low.ab_2017)," Observations sont prises en compte")
+
+hist(epoc.low.ab_2017$Jour_de_l_annee, xlab="Jours de l'année",ylab="Nombre d'observations"
+     , main="Histogramme : Observations ~ Jours de l'année [2017]")
+
+par(mfrow=c(1,2))
+plot(mod.jour.ab_2017,xlab="Jour de l'année",main="GAM: Abondance ~ Jours")
+plot(mod.jour.dv_2017,xlab="Jour de l'année",main="GAM: Diversité ~ Jours")
+par(mfrow=c(1,1))
+```
+
+##### <u>GAM ~ Jour : Pour l'année 2018</u>
+```{r gam_jour_2018, include=TRUE, echo=FALSE}
+cat(nrow(epoc.low.ab_2018)," Observations sont prises en compte")
+
+hist(epoc.low.ab_2018$Jour_de_l_annee, xlab="Jours de l'année",ylab="Nombre d'observations"
+     , main="Histogramme : Observations ~ Jours de l'année [2018]")
+
+par(mfrow=c(1,2))
+plot(mod.jour.ab_2018,xlab="Jour de l'année",main="GAM: Abondance ~ Jours")
+plot(mod.jour.dv_2018,xlab="Jour de l'année",main="GAM: Diversité ~ Jours")
+par(mfrow=c(1,1))
+```
+
+##### <u>GAM ~ Jour : Pour l'année 2019</u>
+```{r gam_jour_2019, include=TRUE, echo=FALSE}
+cat(nrow(epoc.low.ab_2019)," Observations sont prises en compte")
+
+hist(epoc.low.ab_2019$Jour_de_l_annee, xlab="Jours de l'année",ylab="Nombre d'observations"
+     , main="Histogramme : Observations ~ Jours de l'année [2019]")
+
+par(mfrow=c(1,2))
+plot(mod.jour.ab_2019,xlab="Jour de l'année",main="GAM: Abondance ~ Jours")
+plot(mod.jour.dv_2019,xlab="Jour de l'année",main="GAM: Diversité ~ Jours")
+par(mfrow=c(1,1))
+```
+
+
+
+
+
+
