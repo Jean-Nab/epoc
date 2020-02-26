@@ -167,6 +167,35 @@ epoc <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_20
 
 
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
 
