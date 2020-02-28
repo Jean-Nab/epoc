@@ -70,7 +70,7 @@ setwd("C:/git/epoc/data")
         }
 ```
 
-## <u>Exploration des effets des differentes variables sur l'abondance et la diverité des listes</u>
+## <u>Exploration des effets des différentes variables sur l'abondance et la diverité des listes</u>
 * Dans ce document, je me suis concentré à observer l'effet des Variables d'importances :
     + Longitude
     + Latitude
@@ -91,14 +91,15 @@ Dans cette section je vais regarder comment les variables explicatives se compor
 
 #### Variables quantitatives (Lon/Lat/Decade/Heure/Altitude/Experience)
 ```{r test_corr,include = TRUE,echo=TRUE}
-
-          epoc.varqt <- epoc.court.in[,c("Lon_WGS84","Lat_WGS84","Decade","Altitude","Experience","Heure_de_debut")]
-          epoc.varqt$Lon_WGS84_2 <- (epoc.varqt$Lon_WGS84)^2
-          epoc.varqt$Lat_WGS84_2 <- (epoc.varqt$Lat_WGS84)^2
-          epoc.varqt$Decade_2 <- (epoc.varqt$Decade)^2
-          
-          cor.epoc <- cor(epoc.varqt,method = "spearman")
-          corrplot::corrplot(cor.epoc,method="number")
+# sélection des variables quantitatives
+  epoc.varqt <- epoc.court.in[,c("Lon_WGS84","Lat_WGS84","Decade","Altitude","Experience","Heure_de_debut")]
+# ajout des variables à la puissance 2
+  epoc.varqt$Lon_WGS84_2 <- (epoc.varqt$Lon_WGS84)^2
+  epoc.varqt$Lat_WGS84_2 <- (epoc.varqt$Lat_WGS84)^2
+  epoc.varqt$Decade_2 <- (epoc.varqt$Decade)^2
+# Test de corrélation + plot        
+  cor.epoc <- cor(epoc.varqt,method = "spearman")
+  corrplot::corrplot(cor.epoc,method="number")
 ```
 
 Mis à part les variables élevées à la puissance 2, les variables ne sont pas corrélées entre-elles
@@ -107,28 +108,23 @@ Mis à part les variables élevées à la puissance 2, les variables ne sont pas
 #### <u>Abondance ~ Variables explicatives</u>
 ```{r glm_ab, include=TRUE,echo=TRUE}
 mod.ab1 <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
-                           I(Lon_WGS84^2) + I(Lat_WGS84^2) +
-                           Departement + Decade + I(Decade^2) +
-                           Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+                          I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                          Departement + Decade + I(Decade^2) +
+                          Altitude + Experience + Heure_de_debut, data=epoc.court.in)
 ```
 
 ```{r glm_ab_plot, include=TRUE,echo=FALSE}
 summary(mod.ab1) ; par(mfrow=c(2,2)) ; plot(mod.ab1)
 ```
 
-J'ai fait tourner `MASS::stepAIC` afin de déterminer le meilleur modèle AIC-<i>wise</i>
+J'ai fait tourner `MASS::stepAIC` afin de déterminer le meilleur modèle AIC-<i>wise</i>.
+Il s'avère que le meilleur modèle (Abondance ~ Variables explicatives) soit celui sans la latitude.
 
-##### Sortie R de MASS::stepAIC
-```{r glm_ab_stepaic, include=TRUE,echo=FALSE}
-MASS::stepAIC(mod.ab1)
-```
-
-Il s'avère que le meilleur modèle (Abondance ~ Variables explicatives) soit celui sans la latitude
 <u>Plots du modèles Abondance ~ Variables (sans latitude)</u>
 ```{r glm_ab_stepaic_plot, include=TRUE,echo=FALSE}
 mod.ab2 <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + I(Lon_WGS84^2) + 
-                            I(Lat_WGS84^2) + Departement + Decade + I(Decade^2) + Altitude + 
-                            Experience + Heure_de_debut, data = epoc.court.in)
+                           I(Lat_WGS84^2) + Departement + Decade + I(Decade^2) + Altitude + 
+                           Experience + Heure_de_debut, data = epoc.court.in)
         summary(mod.ab2) ; par(mfrow=c(2,2)) ; plot(mod.ab2)
 ```
 
@@ -149,15 +145,16 @@ En excluant de mon analyse les effets des différents départements. J'observe q
 #### <u>Diversité ~ Variables explicatives</u>
 ```{r glm_dv, include=TRUE,echo=TRUE}
 mod.dv1 <- MASS::glm.nb(formula = Diversite_liste ~ Lon_WGS84 + Lat_WGS84 + 
-                            I(Lon_WGS84^2) + I(Lat_WGS84^2) +
-                            Departement + Decade + I(Decade^2) +
-                            Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+                           I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                           Departement + Decade + I(Decade^2) +
+                           Altitude + Experience + Heure_de_debut, data=epoc.court.in)
 ```
 
 ```{r glm_dv_plot, include=TRUE,echo=FALSE}
 summary(mod.dv1) ; par(mfrow=c(2,2)) ; plot(mod.dv1)
 ```
-Ce modèle était le meilleur AIC-<i>wise</i>
+
+Ce modèle était le meilleur AIC-<i>wise</i>.
 
 * Effet positif :
     + Latitude
@@ -175,15 +172,16 @@ Ce modèle était le meilleur AIC-<i>wise</i>
 #### <u>Abondance ~ Variables explicatives + Diversité</u>
 ```{r glm_ab.dv, include=TRUE,echo=TRUE}
 mod.ab_div <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
-                               I(Lon_WGS84^2) + I(Lat_WGS84^2) +
-                               Departement + Decade + I(Decade^2) +
-                               Altitude + Experience + Heure_de_debut + Diversite_liste, data=epoc.court.in)
+                              I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                              Departement + Decade + I(Decade^2) +
+                              Altitude + Experience + Heure_de_debut + Diversite_liste, data=epoc.court.in)
 ```
 
 ```{r glm_ab.dv_sum, include=TRUE,echo=FALSE}
 summary(mod.ab_div) ; par(mfrow=c(2,2)) ; plot(mod.ab_div)
 ```
-Ce modèle était le meilleur AIC-<i>wise</i>
+
+Ce modèle était le meilleur AIC-<i>wise</i>.
 
 * Effet positif :
     + Latitude
