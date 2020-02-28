@@ -195,7 +195,7 @@ tm_shape(carte.commun) +
 
 
 ### GAM ~ Jours en retirant les observations avec de fortes abondances
-Ici, j'ai considéré des observations de fortes abondances comme étaant des obserevations ayant indiquées plus de 250 individus.
+Ici, j'ai considéré des observations de fortes abondances comme étant des observations ayant indiquées plus de 250 individus.
 ```{r retrait_huge_ab, include=TRUE,echo=FALSE,warning=FALSE}
 o <- which(epoc.court.in$Abondance_liste >= 250)
 epoc.low.ab <- epoc.court.in[-o,]
