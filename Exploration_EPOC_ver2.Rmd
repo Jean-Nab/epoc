@@ -212,8 +212,8 @@ ggplot(epoc.low.ab.liste,aes(x=Abondance_liste)) + geom_histogram(stat="count") 
 
 ```{r gam_jour_prep, include=TRUE,echo=TRUE}
 # GAM : Abondance/Diversité ~ Jours [toutes années confondues]
-mod.jour.ab <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML") 
-mod.jour.dv <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.court.in, family="nb",method="REML")
+mod.jour.ab <- mgcv::gam(Abondance_liste ~ s(Jour_de_l_annee), data=epoc.low.ab, family="nb",method="REML") 
+mod.jour.dv <- mgcv::gam(Diversite_liste ~ s(Jour_de_l_annee), data=epoc.low.ab, family="nb",method="REML")
 
 # GAM des Abondances selon les jours, sur les 3 années séparés
 # 2017
