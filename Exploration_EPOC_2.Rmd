@@ -1,0 +1,276 @@
+---
+title: "Exploration_EPOC_2"
+author: "Jean N"
+date: "27/02/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE,cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(lme4)
+library(MASS)
+
+# chemin
+setwd("C:/git/epoc/data")
+
+# import des data/intialisation ----
+    # tableau court dans la periode 1/03 - 31/07
+        epoc.court.in <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_in_period.txt"),header=T,sep="\t", dec=","
+                                    , encoding="UTF-8",quote="")
+        
+        epoc.court.in$Departement <- gsub("\\","",epoc.court.in$Departement,fixed=TRUE) # 3 departements avec des \\ inclus
+        
+        test <- epoc.court.in[,c("Observateur","ID_liste","Jour","Mois","Annee","Date","Heure_de_debut","Minute_de_debut")] 
+         
+        i <- 1
+        while(i <= nrow(test)){
+          
+      # formation de la colonne d'expérience
+          # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+          test[i,"date"] <- paste0(test[i,"Jour"],"/",test[i,"Mois"],"/",test[i,"Annee"]," ",test[i,"Heure_de_debut"],":",test[i,"Minute_de_debut"])
+          
+          
+          i <- i+1
+        }
+        
+        
+              
+        id.obs <- unique(epoc.court.in$Observateur) # debut de boucle sur les observateurs
+        dtf.exp <- data.frame() # fromation d'un noueau dataframe
+        i <- 1
+        while(i <= length(id.obs)){
+          test.tmp <- test[test$Observateur == id.obs[i],] # subsetting du dtf par observateur
+          liste.dup <- which(duplicated(test.tmp[,"ID_liste"]) == FALSE) # detection des doublons de listes (informations repetees inutiles dans ce cas)
+          test.tmp2 <- test.tmp[liste.dup,] # formation d'un dtf ne contenant toutes les epocs realisees par un l'observateur i
+          
+          test.tmp2$date <- as.POSIXct(test.tmp2$date , format = "%d/%m/%Y %H:%M") # conversion de la colonne date en format horaire (pouvant etre trie)
+          class(test.tmp2)
+          test.tmp2 <- test.tmp2[do.call(order, test.tmp2), ] # tri par ordre croissant selon la date
+          
+          # fromation de la colonne experience
+          test.tmp2$Experience <- c(rep(0:(nrow(test.tmp2)-1))) # ajout de 1 par ligne --> experience augmente avec le nombre d'epoc realisees
+          
+          
+          dtf.exp <- rbind(dtf.exp,test.tmp2)
+          
+          
+          i <- i+1
+        }
+        
+      # Pour le moment : Experience liee a une ID --> besoin de rajouter l'experience a toutes les observations de meme ID_liste
+        id.epoc <- unique(epoc.court.in$ID_liste)
+        i <- 1
+        while(i <= length(id.epoc)){
+          
+          epoc.court.in[epoc.court.in$ID_liste == id.epoc[i],"Experience"] <- dtf.exp[dtf.exp$ID_liste == id.epoc[i],"Experience"]
+
+          
+          i <- i+1
+        }
+```
+
+## <u>Exploration des effets des differentes variables sur l'abondance et la diverité des listes</u>
+* Dans ce document, je me suis concentré à observer l'effet des Variables d'importances :
+    + Longitude
+    + Latitude
+    + Longitude$^{2}$
+    + Latitude$^{2}$
+    + Département
+    + Décade
+    + Décade$^{2}$
+    + L'altitude
+    + L'expérience (nombre d'EPOCs antérieures réalisées par l'observateur)
+
+* En appliquant :
+    + des GLM selon une régréssion binomiale négative
+    + des GLMM avec comme effet aléatoire le département (à voir si intéressant)
+    
+### Correlation entre les variables explicatives ?
+Dans cette section je vais regarder comment les variables explicatives se comportent les unes par rapport aux autres.
+
+#### Variables quantitatives (Lon/Lat/Decade/Heure/Altitude/Experience)
+```{r test_corr,include = TRUE,echo=TRUE}
+
+          epoc.varqt <- epoc.court.in[,c("Lon_WGS84","Lat_WGS84","Decade","Altitude","Experience","Heure_de_debut")]
+          epoc.varqt$Lon_WGS84_2 <- (epoc.varqt$Lon_WGS84)^2
+          epoc.varqt$Lat_WGS84_2 <- (epoc.varqt$Lat_WGS84)^2
+          epoc.varqt$Decade_2 <- (epoc.varqt$Decade)^2
+          
+          cor.epoc <- cor(epoc.varqt,method = "spearman")
+          corrplot::corrplot(cor.epoc,method="number")
+```
+
+Mis à part les variables élevées à la puissance 2, les variables ne sont pas corrélées entre-elles
+
+### GLM (negative binomial)
+#### <u>Abondance ~ Variables explicatives</u>
+```{r glm_ab, include=TRUE,echo=TRUE}
+mod.ab1 <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                           I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                           Departement + Decade + I(Decade^2) +
+                           Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+```
+
+```{r glm_ab_plot, include=TRUE,echo=FALSE}
+summary(mod.ab1) ; par(mfrow=c(2,2)) ; plot(mod.ab1)
+```
+
+J'ai fait tourner `MASS::stepAIC` afin de déterminer le meilleur modèle AIC-<i>wise</i>
+
+##### Sortie R de MASS::stepAIC
+```{r glm_ab_stepaic, include=TRUE,echo=FALSE}
+MASS::stepAIC(mod.ab1)
+```
+
+Il s'avère que le meilleur modèle (Abondance ~ Variables explicatives) soit celui sans la latitude
+<u>Plots du modèles Abondance ~ Variables (sans latitude)</u>
+```{r glm_ab_stepaic_plot, include=TRUE,echo=FALSE}
+mod.ab2 <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + I(Lon_WGS84^2) + 
+                            I(Lat_WGS84^2) + Departement + Decade + I(Decade^2) + Altitude + 
+                            Experience + Heure_de_debut, data = epoc.court.in)
+        summary(mod.ab2) ; par(mfrow=c(2,2)) ; plot(mod.ab2)
+```
+
+En excluant de mon analyse les effets des différents départements. J'observe que toutes les variables explicatives quantitatives ont un effet significatifs sur l'abondance des listes.
+
+* Effet positif :
+    + Latitude$^{2}$
+    + Décade$^{2}$
+    
+* Effet négatif :
+    + Longitude
+    + Longitude$^{2}$
+    + Décade
+    + Altitude
+    + Expérience
+    + Heure de début d'observation
+
+#### <u>Diversité ~ Variables explicatives</u>
+```{r glm_dv, include=TRUE,echo=TRUE}
+mod.dv1 <- MASS::glm.nb(formula = Diversite_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                            I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                            Departement + Decade + I(Decade^2) +
+                            Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+```
+
+```{r glm_dv_plot, include=TRUE,echo=FALSE}
+summary(mod.dv1) ; par(mfrow=c(2,2)) ; plot(mod.dv1)
+```
+Ce modèle était le meilleur AIC-<i>wise</i>
+
+* Effet positif :
+    + Latitude
+    + Expérience
+    + Décade
+    
+* Effet négatif :
+    + Longitude
+    + Longitude$^{2}$
+    + Heure de début d'observation
+    + Altitude
+    + Latitude$^{2}$
+    + Décade$^{2}$
+    
+#### <u>Abondance ~ Variables explicatives + Diversité</u>
+```{r glm_ab.dv, include=TRUE,echo=TRUE}
+mod.ab_div <- MASS::glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                               I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                               Departement + Decade + I(Decade^2) +
+                               Altitude + Experience + Heure_de_debut + Diversite_liste, data=epoc.court.in)
+```
+
+```{r glm_ab.dv_sum, include=TRUE,echo=FALSE}
+summary(mod.ab_div) ; par(mfrow=c(2,2)) ; plot(mod.ab_div)
+```
+Ce modèle était le meilleur AIC-<i>wise</i>
+
+* Effet positif :
+    + Latitude
+    + Expérience
+    + Décade
+    
+* Effet négatif :
+    + Longitude
+    + Longitude$^{2}$
+    + Heure de début d'observation
+    + Altitude
+    + Latitude$^{2}$
+    + Décade$^{2}$
+
+### GLMM avec Département comme variable aléatoire
+Pour les GLMMs j'ai utilisé une régréssion poissonienne. En effet, mes modèles ne tournaient pas en binomiale négative, j'avais le message d'erreur suivant :
+
+> Error in pwrssUpdate(pp, resp, tol = tolPwrss, GQmat = GQmat, compDev = compDev,  : 
+  pwrssUpdate did not converge in (maxit) iterations
+
+Je laisse les sorties R, cependant je pense qu'il faut revoir les formules que j'ai utilisé.
+
+#### <u>Abondance ~ Variables explicatives</u>
+```{r glmer_ab, include=TRUE,echo=TRUE,warning=FALSE}
+mod.ab1er <- lme4::glmer(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                                  I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                                  (1|Departement) + Decade + I(Decade^2) +
+                                  Altitude + Experience, data=epoc.court.in,family = "poisson")
+```
+
+```{r glmer_ab_sum, include=TRUE,echo=FALSE}
+summary(mod.ab1er)
+```
+* Effet positif :
+    + Latitude$^{2}$
+    + Décade$^{2}$
+    
+* Effet négatif :
+    + Longitude
+    + Latitude
+    + Longitude$^{2}$
+    + Décade
+    + Heure de début d'observation
+    + Altitude
+    + Expérience
+
+
+#### <u>Diversite ~ Variables explicatives</u>
+```{r glmer_div, include=TRUE,echo=TRUE, warning=FALSE}
+mod.dv1er <- lme4::glmer(formula = Diversite_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                             I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                             (1|Departement) + Decade + I(Decade^2) +
+                             Altitude + Experience, data=epoc.court.in,family = "poisson")
+```
+
+```{r glmer_div_sum, include=TRUE,echo=FALSE}
+summary(mod.dv1er)
+```
+
+* Effet positif :
+    + Latitude
+    + Décade
+    + Expérience
+
+* Effet négatif :
+    + Longitude
+    + Longitude$^{2}$
+    + Latitude$^{2}$
+    + Décade$^{2}$
+    + Heure de début d'observation
+    + Altitude
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
