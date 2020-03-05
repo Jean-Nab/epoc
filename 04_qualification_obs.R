@@ -90,11 +90,11 @@
 # Travail sur la base de donnees faune-france ----
   # ==> mesure de l'implication et connaissances taxonomiques de l'observateur
   # WARNING : relie a l'anciennete de l'observateur dans la base
-    id.obs <- unique(as.character(epoc.envi.liste$Observateur))
-    obs.in.EPOC <- epoc$Observateur %in% id.obs
-    
-
+    id.obs <- unique(as.character(epoc.envi.liste$Observateur)) # vecteur des observateurs
+    # selection de toutes les observations faune-france realisee par les observateurs du protocole EPOC
+    obs.in.EPOC <- epoc$Observateur %in% id.obs 
     EPOC.obs <- epoc[which(obs.in.EPOC == TRUE),]
+    
     #rm(epoc) # no need + trop encombrant
     epoc.observateur <- data.frame()
     corpus.obs <- data.frame()
@@ -105,7 +105,7 @@
       corpus.tmp <- aggregate(Nombre ~ Nom_espece + Observateur,data=EPOC.tmp,FUN=sum) # nombre d'observation totale de toutes les especes vu par l'observateur i
       dtf.tmp <- aggregate(Nombre ~ ID_liste + Nom_espece,data=EPOC.tmp,FUN=sum) # nombre d'observation (en retirant les doublons) fait par l'observateur
       
-      
+      # Recuperation d'informations de mesures faune-france pour l'observateur i
       sp.range <- nrow(corpus.tmp)
       nb.obs <- nrow(dtf.tmp)
       nb.liste0 <- length(unique(EPOC.tmp[EPOC.tmp$Liste_complete == 0,"ID_liste"]))
@@ -115,12 +115,13 @@
       sum.obs <- data.frame(id.obs[i],as.numeric(nb.obs),as.numeric(sp.range),as.numeric(nb.liste),as.numeric(nb.liste0),
                           as.numeric(nb.liste1))
       
+      # ajout des informations au sein de dtfs regroupant tous les observateurs EPOC
       epoc.observateur <- rbind(epoc.observateur,sum.obs) # A enregistrer
       corpus.obs <- rbind(corpus.obs,corpus.tmp) # A enregistrer
       
       
-      cat(i," /",length(id.obs),"\n")
-      i <- i+1
+      cat(i," /",length(id.obs),"\n") # barre d'avancement
+      i <- i+1 # iteration
     }
     
   # mise en forme du dtf  
@@ -135,7 +136,12 @@
   # idee : en se basant sur les donnees d'observations receuillis parmis tout les observateurs du protocole EPOC
   #         calculer la probiblite d'observer une espece parmis le nombre moyens d'observations par liste (== diversite_liste)
     
-  
+  # recuperation du nombre total d'observations faites par espece
+    obs.esp <- count(epoc.oiso$Nom_espece)
+    colnames(obs.esp) <- c("Nom_espece","count")
+    obs.esp <- obs.esp[order(obs.esp$count,decreasing = T),] # Nombre d'observations par espece selon les listes
+    
+    
 
 
 
