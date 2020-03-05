@@ -60,7 +60,7 @@ setwd("C:/git/epoc/data")
     
     epoc.filt2[,"Tps_ecoute"] <- abs(epoc.filt2[,"Heure_fin"] - epoc.filt2[,"Heure_debut"]) # valeur absolue 
     
-    tps_epoc <- which(epoc.filt2[,"Tps_ecoute"] >= 0.01 & epoc.filt2[,"Tps_ecoute"] <= 0.10)
+    tps_epoc <- which(epoc.filt2[,"Tps_ecoute"] >= 0.01 & epoc.filt2[,"Tps_ecoute"] <= 0.08)
     epoc.filt2 <- epoc.filt2[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 8 minutes
     
   # Enregistrement sur le disque
@@ -71,9 +71,9 @@ setwd("C:/git/epoc/data")
       # Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD"
       # Donc, formation d'un dtf avec les protocoles "GENERIC_BIRD" et ""
         levels(epoc.filt2$Protocole)
-        search.prot <- grep("SHOC|STOC_EPS|STOC_MONTAGNE|STOC_ONF|STOC_SITES|WATERBIRDS",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
-        
-        epoc.filt3 <- epoc.filt2[-search.prot,]
+        search.prot <- grep("GENERIC_BIRD|",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
+
+        epoc.filt3 <- epoc.filt2[search.prot,]
       
       # Enregistrement sur le disque
         write.table(x = epoc.filt3, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_3.txt"),sep="\t",dec=","
@@ -92,45 +92,54 @@ setwd("C:/git/epoc/data")
 # 5eme filtrage selon l'etat de la liste : selection des listes completes -----
         epoc.filt5 <- epoc.filt4[epoc.filt4$Liste_complete == 1,]
         
-      # Enregistrement sur le disque
-        write.table(x = epoc.filt5, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_5.txt"),sep="\t",dec=","
-                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
-        
 # Retrait des especes doublons par liste -------
         
         id.liste <- unique(epoc.filt5$ID_liste) # boucle sur les id_listes
         
         epoc.clean <- data.frame() # formation d'un dtf receuillant uniquement les epoc ayant des doublons d'espece (apres un nettoyage)
-        i <- 1
-        while(i <= length(id.liste)){ 
-          dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == id.liste[i],] # formation d'un dtf temporaire contenant toutes les observations de la liste i
-          logi <- duplicated(epoc.filt5[epoc.filt5$ID_liste == id.liste[i],"Nom_espece"]) # recherche de doublon
-          
-          if(TRUE %in% logi == TRUE){ # si presence de doublon
-            
-            loc.logi <- which(logi == TRUE) # detection des lignes d'especes doublons dans l'epoc
-            dtf.tmp.clean <- aggregate(Nombre~Nom_espece,data=epoc.filt5[epoc.filt5$ID_liste == id.liste[i],],FUN=sum) # somme par nom d'especes differents
-            dtf.tmp.clean2 <- merge(dtf.tmp[-loc.logi,],dtf.tmp.clean,all=T) # 2eme dtf temporaire contenant des toutes les observations (doublons/non-doublons)
-            # nettoyage des especes doublons dans le dtf temporaire
-            p <- duplicated(dtf.tmp.clean2$Nom_espece) # recherche des doublons de nom_d'espece
-            p.tru <- which(p == TRUE) # rq : ligne k = esp A ; ligne k+1 = espece Abis
-            
-            dtf.tmp.clean3 <- dtf.tmp.clean2
-            
-            dtf.tmp.clean3[p.tru,3:ncol(dtf.tmp.clean2)] <- dtf.tmp.clean3[p.tru-1,3:ncol(dtf.tmp.clean2)]
-            dtf.tmp.clean3 <- dtf.tmp.clean3[-(p.tru-1),]
-            
-            epoc.clean <- rbind(epoc.clean,dtf.tmp.clean3)
-            
-            epoc.filt5 <- epoc.filt5[-which(epoc.filt5$ID_liste == id.liste[i]),]
-          }
-          
-          cat(i,"/ ",length(id.liste),"\n")
-          i <- i+1
-        }
+        nb.doublons <- c() # initialisation d'un vecteur comptant le nombre de doublons + info sur le nombre de liste contenant les doublons
         
-        epoc.filt5 <- rbind(epoc.filt5,epoc.clean)
+i <- 1
+while(i <= length(id.liste)){ 
+  dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == id.liste[i],] # formation d'un dtf temporaire contenant toutes les observations de la liste i
+  logi <- duplicated(dtf.tmp[,"Nom_espece"]) # recherche de doublon
+          
+  if(TRUE %in% logi == TRUE){ # si presence de doublon
+            
+    loc.logi <- which(logi == TRUE) # detection des lignes d'especes doublons dans l'epoc
+    dtf.tmp.clean <- aggregate(Nombre~Nom_espece,data=dtf.tmp,FUN=sum) # somme par nom d'especes differents
+    dtf.tmp.clean2 <- merge(dtf.tmp[-loc.logi,],dtf.tmp.clean,all=T) # 2eme dtf temporaire contenant des toutes les observations (doublons/non-doublons)
+            
+    # nettoyage des especes doublons dans le dtf temporaire
+            
+    p <- duplicated(dtf.tmp.clean2$Nom_espece) # recherche des doublons de nom_d'espece
+    p.tru <- which(p == TRUE) # rq : ligne k = esp A ; ligne k+1 = espece Abis
+    nb.doublons <- append(nb.doublons,length(p.tru)) # rajout de la somme des doublons dans le vecteur (=> sum: donne le nombre de doublons totaux) & (=> length : le nombre de listes contant des doublons)
+              
+    dtf.tmp.clean3 <- dtf.tmp.clean2
+              
+    dtf.tmp.clean3[p.tru,3:ncol(dtf.tmp.clean2)] <- dtf.tmp.clean3[p.tru-1,3:ncol(dtf.tmp.clean2)]
+    dtf.tmp.clean3 <- dtf.tmp.clean3[-(p.tru-1),]
+              
+    epoc.clean <- rbind(epoc.clean,dtf.tmp.clean3)
+              
+  }
+  else{
+    epoc.clean <- rbind(epoc.clean,dtf.tmp)
+  }
+          
+    # nettoyage de la memoire
+    rm(dtf.tmp)
+          
+    cat(i,"/ ",length(id.liste),"\n")
+    i <- i+1
+}
         
+        epoc.filt5 <- epoc.clean
+        
+              # Enregistrement sur le disque
+        write.table(x = epoc.filt5, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_5.txt"),sep="\t",dec=","
+                    ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
 
 # Rajout des colonnes Diversite_liste et Abondance_liste servant d'indice pour qualifier la liste ----
     # Idee : travaille de decompte d'espece et d'abondance total pour une liste a la fois (detection des listes & isolement d'une liste ==> calcul des indices)
@@ -206,7 +215,60 @@ setwd("C:/git/epoc/data")
             # Enregistrement sur le disque
               write.table(x = epoc.filt6, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6_court.txt"),sep="\t",dec=","
                           ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+
               
+# Rajout de la colonne experience de l'observateur (Experience)
+              # CONCEPT : Expérience = nombre d'EPOC realise par l'observateur avant l'EPOC etudie
+              # ==> Regroupement des EPOC par observateur (subset par observateur)
+              # ==> Besoin d'ordonne les EPOC selon le temps
+              
+              epoc.filt6.exp <- epoc.filt6[,c("Observateur","ID_liste","Jour","Mois","Annee","Date","Heure_de_debut","Minute_de_debut")] 
+              
+              i <- 1
+              while(i <= nrow(epoc.filt6.exp)){
+                
+                
+                # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+                epoc.filt6.exp[i,"date"] <- paste0(epoc.filt6.exp[i,"Jour"],"/",epoc.filt6.exp[i,"Mois"],"/",epoc.filt6.exp[i,"Annee"]," ",epoc.filt6.exp[i,"Heure_de_debut"],":",epoc.filt6.exp[i,"Minute_de_debut"])
+                
+                cat(i,"/ ",nrow(epoc.filt6.exp),"\n")
+                i <- i+1
+              }
+              
+              
+              
+              id.obs <- unique(epoc.filt6$Observateur) # debut de boucle sur les observateurs
+              dtf.exp <- data.frame() # fromation d'un noueau dataframe
+              i <- 1
+              while(i <= length(id.obs)){
+                epoc.filt6.exp.tmp <- epoc.filt6.exp[epoc.filt6.exp$Observateur == id.obs[i],] # subsetting du dtf par observateur
+                liste.dup <- which(duplicated(epoc.filt6.exp.tmp[,"ID_liste"]) == FALSE) # detection des doublons de listes (informations repetees inutiles dans ce cas)
+                epoc.filt6.exp.tmp2 <- epoc.filt6.exp.tmp[liste.dup,] # formation d'un dtf ne contenant toutes les epocs realisees par un l'observateur i
+                
+                epoc.filt6.exp.tmp2$date <- as.POSIXct(epoc.filt6.exp.tmp2$date , format = "%d/%m/%Y %H:%M") # conversion de la colonne date en format horaire (pouvant etre trie)
+                class(epoc.filt6.exp.tmp2)
+                epoc.filt6.exp.tmp2 <- epoc.filt6.exp.tmp2[do.call(order, epoc.filt6.exp.tmp2), ] # tri par ordre croissant selon la date
+                
+                # fromation de la colonne experience
+                epoc.filt6.exp.tmp2$Experience <- c(rep(0:(nrow(epoc.filt6.exp.tmp2)-1))) # ajout de 1 par ligne --> experience augmente avec le nombre d'epoc realisees
+                
+                
+                dtf.exp <- rbind(dtf.exp,epoc.filt6.exp.tmp2)
+                
+                cat(i,"/ ",length(id.obs),"\n")
+                i <- i+1
+              }
+              
+              # Pour le moment : Experience liee a une ID --> besoin de rajouter l'experience a toutes les observations de meme ID_liste
+              id.epoc <- unique(epoc.filt6$ID_liste)
+              i <- 1
+              while(i <= length(id.epoc)){
+                
+                epoc.filt6[epoc.filt6$ID_liste == id.epoc[i],"Experience"] <- dtf.exp[dtf.exp$ID_liste == id.epoc[i],"Experience"]
+                
+                cat(i,"/ ",length(id.epoc),"\n")
+                i <- i+1
+              }
 # 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
     epoc.filt6.long <- reshape(epoc.filt6, varying = c("Nb_pose","Nb_vol","Nb_audition","Nb_NA"),
                            v.names = "Nb_contact",
@@ -241,6 +303,34 @@ setwd("C:/git/epoc/data")
         write.table(x = epoc.filt7.court.out, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_7_court_out_period.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
         
+        
+# separation du jeu de donnees en 2 tableaux (var env/localisation et var communautes d'oiseaux) ----
+  epoc.oiso <- epoc.filt7.court.in[,c("ID_liste","Observateur","Nom_espece","Nombre","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
+  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Jour","Mois","Annee","Jour_de_l_annee",
+                                      "Pentade","Decade","numero_de_la_semaine","Horaire","Heure_debut","Heure_de_debut","Minute_de_debut","Heure_fin","Heure_de_fin",
+                                      "Minute_de_fin","Liste_complete","Commentaire_de_la_liste","ID_Lieu_dit","Lieu_dit","Commune","Departement","Code_INSEE","Pays","Type_de_localisation",
+                                      "X_Lambert_IIe_m","Y_Lambert_IIe_m","X_Lambert93_m","Y_Lambert93_m","Lat_WGS84","Lon_WGS84","latitude_DMS","longitude_DMS",
+                                      "Maille","Altitude","Details","Code_atlas","Remarque","Remarque_privee","Nom","Prenom","Observateur","Experience","Tps_ecoute",
+                                      "Diversite_liste","Abondance_liste")]
+  epoc.envi.liste <- which(duplicated(epoc.envi$ID_liste) == FALSE)
+  epoc.envi.liste <- epoc.envi[epoc.envi.liste,]
+  
+  
+  # homogeneisation
+    # retrait des especes doublons dans les listes du dtf de communautes
+      epoc.oiso2 <- aggregate(Nombre ~ ID_liste + Observateur + Nom_espece + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
+      epoc.oiso2 <- epoc.oiso2[order(epoc.oiso2$ID_liste),]
+      epoc.oiso2$Nb_NA <- epoc.oiso2$Nombre - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
+  
+  
+    write.table(x = epoc.oiso2, file = paste0(sub("/data","/output",getwd()),"/epoc_communaute.txt"),sep="\t",dec=","
+                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+    write.table(x = epoc.envi, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),sep="\t",dec=","
+                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+    write.table(x = epoc.envi.liste, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_liste.txt"),sep="\t",dec=","
+                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+  
+      
 # testing ground (not run) ----
         
     test6a <- epoc.filt6[1:5000,]
