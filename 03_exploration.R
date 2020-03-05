@@ -438,7 +438,7 @@ library(tmap) ; library(tmaptools)
     # ==> Besoin d'ordonne les EPOC selon le temps
                                  
         test <- epoc.court.in[,c("Observateur","ID_liste","Jour","Mois","Annee","Date","Heure_de_debut","Minute_de_debut")] 
-          
+         
         i <- 1
         while(i <= nrow(test)){
           
@@ -484,28 +484,107 @@ library(tmap) ; library(tmaptools)
           cat(i,"/ ",length(id.epoc),"\n")
           i <- i+1
         }
+ 
         
-              
+  # Modeles Abondance ~ X,Y,X2,Y2,experience,heure,decade,decade2,altitude,departement -----     
+        library(lme4)
+        library(MASS)
+        
+        # corr ?
+          library(corrplot)
+          epoc.varqt <- epoc.court.in[,c("Lon_WGS84","Lat_WGS84","Decade", "Altitude", "Experience", "Heure_de_debut")]
+          epoc.varqt$Lon_WGS84_2 <- (epoc.varqt$Lon_WGS84)^2
+          epoc.varqt$Lat_WGS84_2 <- (epoc.varqt$Lat_WGS84)^2
+          epoc.varqt$Decade_2 <- (epoc.varqt$Decade)^2
+          
+          cor.epoc <- cor(epoc.varqt,method = "spearman")
+          corrplot(cor.epoc,method="number")
 
+        mod.ab1 <- glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                           I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                           Departement + Decade + I(Decade^2) +
+                           Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+        summary(mod.ab1) ; par(mfrow=c(2,2)) ; plot(mod.ab1)
+        j <- stepAIC(mod.ab1)
+        
+        # meilleur modele abondance AIC wise (retrait de Lat)
+        mod.ab2 <- glm.nb(formula = Abondance_liste ~ Lon_WGS84 + I(Lon_WGS84^2) + 
+                            I(Lat_WGS84^2) + Departement + Decade + I(Decade^2) + Altitude + 
+                            Experience + Heure_de_debut, data = epoc.court.in)
+        summary(mod.ab2) ; par(mfrow=c(2,2)) ; plot(mod.ab2)
+        
+        mod.dv1 <- glm.nb(formula = Diversite_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                            I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                            Departement + Decade + I(Decade^2) +
+                            Altitude + Experience + Heure_de_debut, data=epoc.court.in)
+        summary(mod.dv1) ; par(mfrow=c(2,2)) ; plot(mod.dv1)
+        stepAIC(mod.dv1) # deja meilleur modele AIC wise
+        
+        mod.ab_div <- glm.nb(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                               I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                               Departement + Decade + I(Decade^2) +
+                               Altitude + Experience + Heure_de_debut + Diversite_liste, data=epoc.court.in)
+        summary(mod.ab_div) ; par(mfrow=c(2,2)) ; plot(mod.ab_div)
+        stepAIC(mod.ab_div) # deja meilleur modele AIC wise
+        
+        
+        
+        # glmer
+          mod.ab1er <- glmer(formula = Abondance_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                                  I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                                  (1|Departement) + Decade + I(Decade^2) +
+                                  Altitude + Experience + Heure_de_debut, data=epoc.court.in,family = "poisson")
+          summary(mod.ab1er) ; par(mfrow=c(2,2)) ; plot(mod.ab1er)
+
+        mod.dv1er <- glmer(formula = Diversite_liste ~ Lon_WGS84 + Lat_WGS84 + 
+                             I(Lon_WGS84^2) + I(Lat_WGS84^2) +
+                             (1|Departement) + Decade + I(Decade^2) +
+                             Altitude + Experience + Heure_de_debut, data=epoc.court.in,family = "poisson")
+        summary(mod.dv1er) ; par(mfrow=c(2,2)) ; plot(mod.dv1er)
+        
+    # Ecart des indices d'abondance/diversite selon le departement -----
+        # Idee : trier les listes qui ont un ecart trorp important avec celui de la region
+        # WARNING : observations avec de fortes abondances ==> risques de tirer la moyenne de la zone vers le haut + cas des departement avec peu de donnees
+          # formation des colonnes receuillant l'abondance et la diversite moyenne du departement 
+              list.dep <- unique(epoc.court.in$Departement)
+              i <- 1
+              
+              while(i <= length(list.dep)){
+                epoc.court.in[epoc.court.in$Departement == list.dep[i],"Abondance_departement"] <- mean(epoc.court.in[epoc.court.in$Departement == list.dep[i],"Abondance_liste"])
+                epoc.court.in[epoc.court.in$Departement == list.dep[i],"Diversite_departement"] <- mean(epoc.court.in[epoc.court.in$Departement == list.dep[i],"Diversite_liste"])
+              
+                cat(i," /",length(list.dep),"\n")
+                i <- i+1
+              }
+          # calcul de l'ecart a la moyenne
+              epoc.court.in$Ecart_abondance_departement <- abs(epoc.court.in$Abondance_liste / epoc.court.in$Abondance_departement)
+              epoc.court.in$Ecart_diversite_departement <- abs(epoc.court.in$Diversite_liste / epoc.court.in$Diversite_departement)
+              # visualisation
+              ggplot(epoc.court.in) + geom_histogram(aes(x = Ecart_abondance_departement)) + xlim(-0.5,5)
+              ggplot(epoc.court.in) + geom_histogram(aes(x = Ecart_diversite_departement))
+              # ecart de la diversite plus norme autour de de 1
               
               
-              
-              
-              
-        lp      
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
+    # ecart des indices d'abondance/diversite selon le mois -----
+    # Warning : attention a separer les annees
+        epoc2017 <- which(epoc.court.in$Annee == 2017)
+        list.mois.2017 <- unique(epoc.court.in[epoc2017,"Mois"])
+        
+        i <- 1
+        while(i <= length(list.mois.2017)){
+          epoc.court.in$Abondance_mois <- mean(epoc.court.in[epoc2017 & epoc.court.in$Mois == list.mois.2017[i],"Abondance"])
+          
+          i <- i+1
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+               
 
       # Table de contingence (espece/observateur) ----
             dtf.esp_obs <- epoc.court.in[,c("Observateur","Nom_espece")]
