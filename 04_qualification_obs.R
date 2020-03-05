@@ -115,8 +115,8 @@
       sum.obs <- data.frame(id.obs[i],as.numeric(nb.obs),as.numeric(sp.range),as.numeric(nb.liste),as.numeric(nb.liste0),
                           as.numeric(nb.liste1))
       
-      epoc.observateur <- rbind(epoc.observateur,sum.obs)
-      corpus.obs <- rbind(corpus.obs,corpus.tmp)
+      epoc.observateur <- rbind(epoc.observateur,sum.obs) # A enregistrer
+      corpus.obs <- rbind(corpus.obs,corpus.tmp) # A enregistrer
       
       
       cat(i," /",length(id.obs),"\n")
@@ -134,6 +134,8 @@
 # Probabilite d'abondance d'observations d'especes
   # idee : en se basant sur les donnees d'observations receuillis parmis tout les observateurs du protocole EPOC
   #         calculer la probiblite d'observer une espece parmis le nombre moyens d'observations par liste (== diversite_liste)
+    
+  
 
 
 
