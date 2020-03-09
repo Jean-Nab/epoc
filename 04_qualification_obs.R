@@ -53,16 +53,21 @@
     epoc.envi.liste$Ecart_abondance_departement <- abs(epoc.envi.liste$Abondance_liste / epoc.envi.liste$Abondance_departement)
     epoc.envi.liste$Ecart_diversite_departement <- abs(epoc.envi.liste$Diversite_liste / epoc.envi.liste$Diversite_departement)
   # visualisation
-    ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_abondance_departement)) + xlim(-0.5,5)
+    ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_abondance_departement)) + xlim(-0.5,5) +
+      xlab("Abondance de l'EPOC / Abondance moyenne du département") +
+      ylab("Nombre d'EPOC") +
+      ggtitle("Ecart d'abondance des EPOC au niveau spatial")
     ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_diversite_departement))
     # ecart de la diversite plus norme autour de de 1
   
   
 # ecart des indices d'abondance/diversite selon le mois -----
   # Warning : attention a separer les annees
+    # separation & calcul de l'abondance/diversité moyenne par mois
     test.ab <- aggregate(Abondance_liste ~ Annee + Mois, data=epoc.envi.liste, FUN=mean)
     test.dv <- aggregate(Diversite_liste ~ Annee + Mois, data=epoc.envi.liste, FUN=mean)
     
+    # ajout de l'information de l'abondance/diversité moyenne aux listes
     i <- 1
     while(i <= nrow(epoc.envi.liste)){
       j <- 1
@@ -98,12 +103,17 @@
     #rm(epoc) # no need + trop encombrant
     epoc.observateur <- data.frame()
     corpus.obs <- data.frame()
+    nb.meet <- data.frame()
     
     i <- 1
     while(i <= length(id.obs)){
       EPOC.tmp <- EPOC.obs[EPOC.obs$Observateur == id.obs[i],c("ID_liste","Observateur","Nom_espece","Nombre","Liste_complete")]
       corpus.tmp <- aggregate(Nombre ~ Nom_espece + Observateur,data=EPOC.tmp,FUN=sum) # nombre d'observation totale de toutes les especes vu par l'observateur i
       dtf.tmp <- aggregate(Nombre ~ ID_liste + Nom_espece,data=EPOC.tmp,FUN=sum) # nombre d'observation (en retirant les doublons) fait par l'observateur
+      
+      nb.meet.tmp <- count(dtf.tmp$Nom_espece)
+      colnames(nb.meet.tmp) <- c("Nom_espece","Nb_rencontre_liste")
+      nb.meet.tmp$Observateur <- c(rep(id.obs[i],nrow(nb.meet.tmp)))
       
       # Recuperation d'informations de mesures faune-france pour l'observateur i
       sp.range <- nrow(corpus.tmp)
@@ -118,6 +128,7 @@
       # ajout des informations au sein de dtfs regroupant tous les observateurs EPOC
       epoc.observateur <- rbind(epoc.observateur,sum.obs) # A enregistrer
       corpus.obs <- rbind(corpus.obs,corpus.tmp) # A enregistrer
+      nb.meet <- rbind(nb.meet,nb.meet.tmp)
       
       
       cat(i," /",length(id.obs),"\n") # barre d'avancement
