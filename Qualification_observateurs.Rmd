@@ -1,0 +1,284 @@
+---
+title: "Qualification observateurs"
+author: "Jean N"
+date: "06/03/2020"
+output: html_document
+---
+
+```{r setup, include=TRUE,cache=TRUE,echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# chemin
+  setwd("C:/git/epoc/data")
+# packages
+  library(ggplot2)
+  library(plyr)
+  
+  load("C:/git/epoc/qualification_obs_initialisation.RData") 
+  
+  # fonction de plot de plusieurs graphs
+  multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+## Qualification des observateurs du protocole EPOC
+
+Dans ce document, je vais former différents indices nous permettant de caractériser les observateurs.
+
+* Indices:
+    + Ecart de l'abondance/diversité de l'EPOC réalisée vis-à-vis du département de la mesure
+    + Ecart de l'abondance/diversité de l'EPOC réalisée vis-à-vis du mois de la mesure
+    + L'expérience (ou expérience protocole) : Nombre de protocole EPOC antérieur réalisé
+    + L'implication dans la base de données faune-france : Nombre d'observations totales (+ hors EPOC) réalisé par l'observateur
+    + L'étendue taxonomique : Nombre d'espèces détectées par l'observateur / (+ nombre de fois qu'une espèce )
+    
+Pour réaliser ces indices, je me suis basé sur une partie du jeu de données avec une abondance/diversité constante. De ce fait, j'ai retiré les observations du mois de juin et juillet (forte élévation de l'abondance) et les données de hautes altitudes (prises dans des conditions spéciales).
+
+```{r retrait_ind, include=TRUE,echo=FALSE}
+# Retrait des listes w/ conditions speciales ----
+  # - realise en juin/juillet : abondance superieur a mars/avril/mai
+    del.juin_jui <- epoc.envi.liste[which(epoc.envi.liste$Mois >= 6),"ID_liste"]
+    del.juin_jui1 <- epoc.envi.liste$ID_liste %in% del.juin_jui
+    del.juin_jui2 <- epoc.oiso$ID_liste %in% del.juin_jui
+    
+    epoc.envi.liste <- epoc.envi.liste[which(del.juin_jui1 == FALSE),]
+    epoc.oiso <- epoc.oiso[which(del.juin_jui2 == FALSE),]
+    
+  # - realise a plus de 1200m d'altitude (presence d'autre protocoles)
+    del.alt <- epoc.envi.liste[which(epoc.envi.liste$Altitude > 1200),"ID_liste"]
+    del.alt1 <- epoc.envi.liste$ID_liste %in% del.alt
+    del.alt2 <- epoc.oiso$ID_liste %in% del.alt
+
+    epoc.envi.liste <- epoc.envi.liste[which(del.alt1 == FALSE),]
+    epoc.oiso <- epoc.oiso[which(del.alt2 == FALSE),]
+```
+
+
+### <u>Ecart de l'abondance/diversité de l'EPOC réalisée vis-à-vis du département de la mesure</u>
+
+```{r ecart_ab1, include=TRUE,echo=FALSE}
+# Ecart des indices d'abondance/diversite selon le departement -----
+  # Idee : trier les listes qui ont un ecart trop important avec celui de la region
+  # WARNING : observations avec de fortes abondances ==> risques de tirer la moyenne de la zone vers le haut + cas des departement avec peu de donnees
+  # formation des colonnes receuillant l'abondance et la diversite moyenne du departement 
+    list.dep <- unique(epoc.envi.liste$Departement)
+    i <- 1
+      
+      while(i <= length(list.dep)){
+        epoc.envi.liste[epoc.envi.liste$Departement == list.dep[i],"Abondance_departement"] <- mean(epoc.envi.liste[epoc.envi.liste$Departement == list.dep[i],"Abondance_liste"])
+        epoc.envi.liste[epoc.envi.liste$Departement == list.dep[i],"Diversite_departement"] <- mean(epoc.envi.liste[epoc.envi.liste$Departement == list.dep[i],"Diversite_liste"])
+        
+        #cat(i," /",length(list.dep),"\n")
+        i <- i+1
+      }
+  # calcul de l'ecart a la moyenne
+    epoc.envi.liste$Ecart_abondance_departement <- abs(epoc.envi.liste$Abondance_liste / epoc.envi.liste$Abondance_departement)
+    epoc.envi.liste$Ecart_diversite_departement <- abs(epoc.envi.liste$Diversite_liste / epoc.envi.liste$Diversite_departement)
+```
+
+```{r ecart_ab2, include=TRUE,echo=FALSE,message=FALSE,warning=FALSE}
+library(ggplot2)
+# visualisation
+    ecart_ab_dep <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_abondance_departement)) + xlim(-0.5,5) +
+      xlab("Abondance de l'EPOC / Abondance moyenne du département") +
+      ylab("Nombre d'EPOC") +
+      ggtitle("Ecart d'abondance des EPOC au niveau spatial")
+    
+    ecart_dv_dep <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_diversite_departement)) + xlim(-0.5,5) +
+      xlab("Diversité de l'EPOC / Diversité moyenne du département") +
+      ylab("Nombre d'EPOC") +
+      ggtitle("Ecart de la diversité observée des EPOC au niveau spatial")
+    
+    multiplot(ecart_ab_dep,ecart_dv_dep,cols = 1)
+```
+
+Plus de 150 EPOC ont des abondances observées 5 fois plus importantes que celle des départements où elles ont eu lieu.
+
+
+### <u>Ecart de l'abondance/diversité de l'EPOC réalisée vis-à-vis du mois de la mesure</u>
+
+```{r ecart_ab1_mois, include=TRUE,echo=FALSE}
+# ecart des indices d'abondance/diversite selon le mois -----
+  # Warning : attention a separer les annees
+    # separation & calcul de l'abondance/diversité moyenne par mois
+    test.ab <- aggregate(Abondance_liste ~ Annee + Mois, data=epoc.envi.liste, FUN=mean)
+    test.dv <- aggregate(Diversite_liste ~ Annee + Mois, data=epoc.envi.liste, FUN=mean)
+    
+    # ajout de l'information de l'abondance/diversité moyenne aux listes
+    i <- 1
+    while(i <= nrow(epoc.envi.liste)){
+      j <- 1
+      while(j <= nrow(test.ab)){
+        if(epoc.envi.liste[i,"Annee"] == test.ab[j,"Annee"] & epoc.envi.liste[i,"Mois"] == test.ab[j,"Mois"]){
+          epoc.envi.liste[i,"Abondance_mois"] <- test.ab[j,"Abondance_liste"]
+          epoc.envi.liste[i,"Diversite_mois"] <- test.dv[j,"Diversite_liste"]
+        }
+        j <- j+1
+      }
+      
+      #cat(i," /",nrow(epoc.envi.liste),"\n")
+      i <- i+1
+    }
+    
+        
+  # calcul de l'ecart a la moyenne
+    epoc.envi.liste$Ecart_abondance_mois <- abs(epoc.envi.liste$Abondance_liste / epoc.envi.liste$Abondance_mois)
+    epoc.envi.liste$Ecart_diversite_mois <- abs(epoc.envi.liste$Diversite_liste / epoc.envi.liste$Diversite_mois)
+```
+
+```{r ecart_ab2_mois, include=TRUE,echo=FALSE,message=FALSE,warning=FALSE}
+library(ggplot2)
+# visualisation
+    ecart_ab_mois <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_abondance_mois)) + xlim(-0.5,5) +
+      xlab("Abondance de l'EPOC / Abondance moyenne du mois") +
+      ylab("Nombre d'EPOC") +
+      ggtitle("ZOOM : Ecart d'abondance des EPOC au niveau temporel")
+    
+    ecart_dv_mois <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_diversite_mois)) + xlim(-0.5,5) +
+      xlab("Diversité de l'EPOC / Diversité moyenne du mois") +
+      ylab("Nombre d'EPOC") +
+      ggtitle("Ecart de la diversité observée des EPOC au niveau temporel")
+    
+    multiplot(ecart_ab_mois,ecart_dv_mois,cols=1)
+
+```
+
+De même pour les mois, plus de 150 EPOC ont une abondance 5 fois supérieure au mois dans lesquelles elles ont été réalisées
+
+### <u>Données relatives à l'observateur</u>
+
+Dans cette partie, j'ai formé des indices me permettant "d'accéder" au niveau d'expertise d'un observateur. Néanmoins, ces indicateurs dépendent de l'ancienneté de la participation de l'observateur (<i>i.e</i> un observateur arrivé à la fin de la période considérée possédera des indices plus faibles).
+
+
+```{r epoc_data, include=TRUE,echo=FALSE,cache=TRUE}
+# Travail sur la base de donnees faune-france ----
+  # ==> mesure de l'implication et connaissances taxonomiques de l'observateur
+  # WARNING : relie a l'anciennete de l'observateur dans la base
+    id.obs <- unique(as.character(epoc.envi.liste$Observateur)) # vecteur des observateurs
+    # selection de toutes les observations faune-france realisee par les observateurs du protocole EPOC
+    obs.in.EPOC <- epoc$Observateur %in% id.obs 
+    EPOC.obs <- epoc[which(obs.in.EPOC == TRUE),]
+    
+    #rm(epoc) # no need + trop encombrant
+    epoc.observateur <- data.frame()
+    corpus.obs <- data.frame()
+    
+    i <- 1
+    while(i <= length(id.obs)){
+      EPOC.tmp <- EPOC.obs[EPOC.obs$Observateur == id.obs[i],c("ID_liste","Observateur","Nom_espece","Nombre","Liste_complete")]
+      corpus.tmp <- aggregate(Nombre ~ Nom_espece + Observateur,data=EPOC.tmp,FUN=sum) # nombre d'observation totale de toutes les especes vu par l'observateur i
+      dtf.tmp <- aggregate(Nombre ~ ID_liste + Nom_espece,data=EPOC.tmp,FUN=sum) # nombre d'observation (en retirant les doublons) fait par l'observateur
+      
+      nb.meet.tmp <- count(dtf.tmp$Nom_espece)
+      colnames(nb.meet.tmp) <- c("Nom_espece","Nb_rencontre_liste")
+      nb.meet.tmp$Observateur <- c(rep(id.obs[i],nrow(nb.meet.tmp)))
+      
+      corpus.tmp <- join(x = corpus.tmp,y=nb.meet.tmp,by=c("Nom_espece","Observateur"))
+      
+      # Recuperation d'informations de mesures faune-france pour l'observateur i
+      sp.range <- nrow(corpus.tmp)
+      nb.obs <- nrow(dtf.tmp)
+      nb.liste0 <- length(unique(EPOC.tmp[EPOC.tmp$Liste_complete == 0,"ID_liste"]))
+      nb.liste1 <- length(unique(EPOC.tmp[EPOC.tmp$Liste_complete == 1,"ID_liste"]))
+      nb.liste <- nb.liste0 + nb.liste1
+      
+      sum.obs <- data.frame(id.obs[i],as.numeric(nb.obs),as.numeric(sp.range),as.numeric(nb.liste),as.numeric(nb.liste0),
+                          as.numeric(nb.liste1))
+      
+      # ajout des informations au sein de dtfs regroupant tous les observateurs EPOC
+      epoc.observateur <- rbind(epoc.observateur,sum.obs) # A enregistrer
+      corpus.obs <- rbind(corpus.obs,corpus.tmp) # A enregistrer
+
+      
+      
+      #cat(i," /",length(id.obs),"\n") # barre d'avancement
+      i <- i+1 # iteration
+    }
+    
+  # mise en forme du dtf  
+    colnames(epoc.observateur) <- c("Observateur","Nb_observations_tot","Etendue_taxonomique","Nb_liste_tot","Nb_liste_0","Nb_liste_1")
+
+    epoc.observateur$Ratio_liste <- epoc.observateur$Nb_liste_1 / epoc.observateur$Nb_liste_tot
+
+```
+
+#### <u>Représentation des tableaux formés.</u>
+
+##### <i>Tableau d'information sur l'implication de l'observateur</i>
+
+J'ai pris comme exemple, les 5 plus gros contributeurs.
+```{r pres_table, include=TRUE,echo=FALSE}
+head(epoc.observateur[order(epoc.observateur$Nb_liste_tot,decreasing = T),],5)
+```
+
+##### <i>Tableau d'information sur les espèces détectés par l'observateur</i>
+
+```{r pres_table1, include=TRUE,echo=FALSE}
+head(corpus.obs,5)
+```
+
+
+```{r,include=TRUE,echo=FALSE,message=FALSE}
+et.tax <- ggplot(epoc.observateur) + geom_histogram(aes(x=Etendue_taxonomique)) +
+  xlab("Nombre d'espèces différentes identifiées") + ylab("Nombre d'observateur")
+
+ratio <- ggplot(epoc.observateur) + geom_histogram(aes(x=Ratio_liste)) +
+  xlab("Ratio: Listes complètes / Nombre de listes totales") + ylab("Nombre d'observateur")
+
+multiplot(et.tax,ratio,cols=1)
+
+cat("Nombre d'observateurs avec moins de 20 listes :",length(which(epoc.observateur$Nb_liste_tot <= 20 )),"\n",
+    "Nombre d'observateurs avec [20:50] listes :",length(which(epoc.observateur$Nb_liste_tot > 20 & epoc.observateur$Nb_liste_tot <= 50)),"\n",
+    "Nombre d'observateurs avec [50:120] listes :",length(which(epoc.observateur$Nb_liste_tot > 50 & epoc.observateur$Nb_liste_tot <= 120)),"\n",
+    "Nombre d'observateurs avec [120:250] listes :",length(which(epoc.observateur$Nb_liste_tot > 120 & epoc.observateur$Nb_liste_tot <= 250)),"\n",
+    "Nombre d'observateurs avec [250:500] listes :",length(which(epoc.observateur$Nb_liste_tot > 250 & epoc.observateur$Nb_liste_tot <= 500)),"\n",
+    "Nombre d'observateurs avec [500:1000] listes :",length(which(epoc.observateur$Nb_liste_tot > 500 & epoc.observateur$Nb_liste_tot <= 1000)),"\n",
+    "Nombre d'observateurs avec plus de 1000 listes :",length(which(epoc.observateur$Nb_liste_tot > 1000)),"\n")
+
+
+
+```
+
+On peut se demander comment le ratio des listes completes évolue.
+
+```{r,}
+cor <- cor(epoc.observateur[,2:ncol(epoc.observateur)],method = "spearman")
+corrplot::corrplot(cor,method="number")
+```
+
+Il est intérressant de noter que le nombre de listes complètes réalisé par l'observateur est fortement corrélé positivement (<i>rho</i> : 0.82) à l'étendue taxonomique de celui-ci.
+
+
+
