@@ -164,7 +164,7 @@ library(ggplot2)
     ecart_ab_mois <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_abondance_mois)) + xlim(-0.5,5) +
       xlab("Abondance de l'EPOC / Abondance moyenne du mois") +
       ylab("Nombre d'EPOC") +
-      ggtitle("ZOOM : Ecart d'abondance des EPOC au niveau temporel")
+      ggtitle("Ecart d'abondance des EPOC au niveau temporel")
     
     ecart_dv_mois <- ggplot(epoc.envi.liste) + geom_histogram(aes(x = Ecart_diversite_mois)) + xlim(-0.5,5) +
       xlab("Diversité de l'EPOC / Diversité moyenne du mois") +
