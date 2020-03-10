@@ -577,6 +577,30 @@ library(tmap) ; library(tmaptools)
           i <- i+1
         }
         
+  # Use du distance sampling possible ? -----
+    # Distance smapling <=> use de l'application NaturaList + toutes les observations georeferencees
+    # Idee : compter le nombre de liste w/ une geolocalisation unique (Liste rentree sur ordinateur)
+    # ==> savoir la part de liste utilisable pour le distance sampling
+        test <- 
+      test <- aggregate(Lon_WGS84 ~ ID_liste+Observateur,data=epoc.court.in,FUN=count)
+        
+      test <- epoc.court.in[,c("ID_liste","Observateur","Lon_WGS84","Lat_WGS84")]
+      test.liste <- test %>%
+        group_by(ID_liste) %>%
+        mutate(nb_local_lon = length(unique(Lon_WGS84)),
+               nb_local_lat = length(unique(Lat_WGS84))) 
+      
+      test.liste1 <- test.liste[which(duplicated(test.liste$ID_liste) == FALSE),] # 1 ligne par liste
+      
+      p <- length(which(test.liste1$nb_local_lon == 1 & test.liste1$nb_local_lat == 1))
+      # p = 6386 listes ==> 28.87 % des listes sont prises par ordinateur
+      
+      
+      
+        
+        
+        
+        
         
         
         
