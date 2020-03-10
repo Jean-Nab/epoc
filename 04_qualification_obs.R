@@ -3,6 +3,8 @@
 # packages
   library(ggplot2)
   library(plyr)
+  library(mgcv)
+  library(MASS)
   
   
   
@@ -14,6 +16,10 @@
                          , encoding="UTF-8",quote="")
   epoc.envi.liste <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_liste.txt"),header=T,sep="\t", dec=","
                                 , encoding="UTF-8",quote="")
+  
+  
+
+  
   
   load("C:/git/epoc/qualification_obs_initialisation.RData")
   
@@ -34,6 +40,13 @@
     epoc.envi.liste <- epoc.envi.liste[which(del.alt1 == FALSE),]
     epoc.oiso <- epoc.oiso[which(del.alt2 == FALSE),]
     
+  # - realise en dehors de la periode 5-17h
+    del.hour <- epoc.envi.liste[which(epoc.envi.liste$Heure_de_debut < 5 | epoc.envi.liste$Heure_de_debut > 17),"ID_liste"]
+    del.hour1 <- epoc.envi.liste$ID_liste %in% del.hour
+    del.hour2 <- epoc.oiso$ID_liste %in% del.hour
+    
+    epoc.envi.liste <- epoc.envi.liste[which(del.hour1 == FALSE),]
+    epoc.oiso <- epoc.oiso[which(del.hour2 == FALSE),]
 
 # Ecart des indices d'abondance/diversite selon le departement -----
   # Idee : trier les listes qui ont un ecart trorp important avec celui de la region
@@ -103,7 +116,6 @@
     #rm(epoc) # no need + trop encombrant
     epoc.observateur <- data.frame()
     corpus.obs <- data.frame()
-    nb.meet <- data.frame()
     
     i <- 1
     while(i <= length(id.obs)){
@@ -114,6 +126,8 @@
       nb.meet.tmp <- count(dtf.tmp$Nom_espece)
       colnames(nb.meet.tmp) <- c("Nom_espece","Nb_rencontre_liste")
       nb.meet.tmp$Observateur <- c(rep(id.obs[i],nrow(nb.meet.tmp)))
+      
+      corpus.tmp <- join(x = corpus.tmp,y=nb.meet.tmp,by=c("Nom_espece","Observateur"))
       
       # Recuperation d'informations de mesures faune-france pour l'observateur i
       sp.range <- nrow(corpus.tmp)
@@ -128,7 +142,7 @@
       # ajout des informations au sein de dtfs regroupant tous les observateurs EPOC
       epoc.observateur <- rbind(epoc.observateur,sum.obs) # A enregistrer
       corpus.obs <- rbind(corpus.obs,corpus.tmp) # A enregistrer
-      nb.meet <- rbind(nb.meet,nb.meet.tmp)
+
       
       
       cat(i," /",length(id.obs),"\n") # barre d'avancement
@@ -138,9 +152,11 @@
   # mise en forme du dtf  
     colnames(epoc.observateur) <- c("Observateur","Nb_observations_tot","Etendue_taxonomique","Nb_liste_tot","Nb_liste_0","Nb_liste_1")
 
+    epoc.observateur$Ratio_liste <- epoc.observateur$Nb_liste_1 / epoc.observateur$Nb_liste_tot
+    
   # idee de representation : tableau avec les grands champions d'EPOC
-    j <- epoc.observateur[epoc.observateur$Observateur == "Jeremy Dupuy",]
-    j <- corpus.obs[corpus.obs$Observateur == "Jeremy Dupuy",]
+  #  j <- epoc.observateur[epoc.observateur$Observateur == "Jeremy Dupuy",]
+  #  j <- corpus.obs[corpus.obs$Observateur == "Jeremy Dupuy",]
 
 
 # Probabilite d'abondance d'observations d'especes
@@ -151,8 +167,181 @@
     obs.esp <- count(epoc.oiso$Nom_espece)
     colnames(obs.esp) <- c("Nom_espece","count")
     obs.esp <- obs.esp[order(obs.esp$count,decreasing = T),] # Nombre d'observations par espece selon les listes
+
+# sauvegarde disque 1 : ----
+    #save.image(file = "C:/git/epoc/qualification_obs_initialisation1.RData")
+    
+    load("C:/git/epoc/qualification_obs_initialisation1.RData")
+
+# Calcul de probabilité d'observations des especes selon le protocole EPOC ----
+  # Idee : apres avoir calculer le nombre de fois d'observer une espece communes dans une liste ==> calcul de la proba de l'observer par un tirage aléatoire
+    # calcul du poids de l'espece dans l'ensemble des observations
+      obs.esp$prob <- obs.esp$count/nrow(epoc.envi.liste)
+
+    # need de boucle pour faire une repetition
+      # faire 2 fois
+          # liste compllete / listes des champions
+    # tirage avec poids sans remise -----
+       tir.1esp <- c();       tir.2esp <- c()
+       tir.3esp <- c();       tir.4esp <- c()
+       tir.5esp <- c();       tir.6esp <- c()
+       tir.7esp <- c();       tir.8esp <- c()
+       tir.9esp <- c();       tir.10esp <- c()
+       tir.11esp <- c();       tir.12esp <- c()
+       tir.13esp <- c();       tir.14esp <- c()
+       tir.15esp <- c();       tir.16esp <- c()
+       tir.17esp <- c();       tir.18esp <- c()
+       tir.19esp <- c();       tir.20esp <- c()
+       tir.21esp <- c();       tir.22esp <- c()
+       tir.23esp <- c();       tir.24esp <- c()
+       tir.25esp <- c();       tir.26esp <- c()
+       tir.27esp <- c();       tir.28esp <- c()
+       tir.29esp <- c();       tir.30esp <- c()
+       
+       for(i in 1:1000){
+         tir.1esp <- append(tir.1esp,as.character(sample(x = obs.esp$Nom_espece,size=1,replace=FALSE,prob = obs.esp$prob)))
+         tir.2esp <- append(tir.2esp,as.character(sample(x = obs.esp$Nom_espece,size=2,replace=FALSE,prob = obs.esp$prob)))
+         tir.3esp <- append(tir.3esp,as.character(sample(x = obs.esp$Nom_espece,size=3,replace=FALSE,prob = obs.esp$prob)))
+         tir.4esp <- append(tir.4esp,as.character(sample(x = obs.esp$Nom_espece,size=4,replace=FALSE,prob = obs.esp$prob)))
+         tir.5esp <- append(tir.5esp,as.character(sample(x = obs.esp$Nom_espece,size=5,replace=FALSE,prob = obs.esp$prob)))
+         tir.6esp <- append(tir.6esp,as.character(sample(x = obs.esp$Nom_espece,size=6,replace=FALSE,prob = obs.esp$prob)))
+         tir.7esp <- append(tir.7esp,as.character(sample(x = obs.esp$Nom_espece,size=7,replace=FALSE,prob = obs.esp$prob)))
+         tir.8esp <- append(tir.8esp,as.character(sample(x = obs.esp$Nom_espece,size=8,replace=FALSE,prob = obs.esp$prob)))
+         tir.9esp <- append(tir.9esp,as.character(sample(x = obs.esp$Nom_espece,size=9,replace=FALSE,prob = obs.esp$prob)))
+         tir.10esp <- append(tir.10esp,as.character(sample(x = obs.esp$Nom_espece,size=10,replace=FALSE,prob = obs.esp$prob)))
+         tir.11esp <- append(tir.11esp,as.character(sample(x = obs.esp$Nom_espece,size=11,replace=FALSE,prob = obs.esp$prob)))
+         tir.12esp <- append(tir.12esp,as.character(sample(x = obs.esp$Nom_espece,size=12,replace=FALSE,prob = obs.esp$prob)))
+         tir.13esp <- append(tir.13esp,as.character(sample(x = obs.esp$Nom_espece,size=13,replace=FALSE,prob = obs.esp$prob)))
+         tir.14esp <- append(tir.14esp,as.character(sample(x = obs.esp$Nom_espece,size=14,replace=FALSE,prob = obs.esp$prob)))
+         tir.15esp <- append(tir.15esp,as.character(sample(x = obs.esp$Nom_espece,size=15,replace=FALSE,prob = obs.esp$prob)))
+         tir.16esp <- append(tir.16esp,as.character(sample(x = obs.esp$Nom_espece,size=16,replace=FALSE,prob = obs.esp$prob)))
+         tir.17esp <- append(tir.17esp,as.character(sample(x = obs.esp$Nom_espece,size=17,replace=FALSE,prob = obs.esp$prob)))
+         tir.18esp <- append(tir.18esp,as.character(sample(x = obs.esp$Nom_espece,size=18,replace=FALSE,prob = obs.esp$prob)))
+         tir.19esp <- append(tir.19esp,as.character(sample(x = obs.esp$Nom_espece,size=19,replace=FALSE,prob = obs.esp$prob)))
+         tir.20esp <- append(tir.20esp,as.character(sample(x = obs.esp$Nom_espece,size=20,replace=FALSE,prob = obs.esp$prob)))
+         tir.21esp <- append(tir.21esp,as.character(sample(x = obs.esp$Nom_espece,size=21,replace=FALSE,prob = obs.esp$prob)))
+         tir.22esp <- append(tir.22esp,as.character(sample(x = obs.esp$Nom_espece,size=22,replace=FALSE,prob = obs.esp$prob)))
+         tir.23esp <- append(tir.23esp,as.character(sample(x = obs.esp$Nom_espece,size=23,replace=FALSE,prob = obs.esp$prob)))
+         tir.24esp <- append(tir.24esp,as.character(sample(x = obs.esp$Nom_espece,size=24,replace=FALSE,prob = obs.esp$prob)))
+         tir.25esp <- append(tir.25esp,as.character(sample(x = obs.esp$Nom_espece,size=25,replace=FALSE,prob = obs.esp$prob)))
+         tir.26esp <- append(tir.26esp,as.character(sample(x = obs.esp$Nom_espece,size=26,replace=FALSE,prob = obs.esp$prob)))
+         tir.27esp <- append(tir.27esp,as.character(sample(x = obs.esp$Nom_espece,size=27,replace=FALSE,prob = obs.esp$prob)))
+         tir.28esp <- append(tir.28esp,as.character(sample(x = obs.esp$Nom_espece,size=28,replace=FALSE,prob = obs.esp$prob)))
+         tir.29esp <- append(tir.29esp,as.character(sample(x = obs.esp$Nom_espece,size=29,replace=FALSE,prob = obs.esp$prob)))
+         tir.30esp <- append(tir.30esp,as.character(sample(x = obs.esp$Nom_espece,size=30,replace=FALSE,prob = obs.esp$prob)))
+         
+         
+       }
+        
+      # changement de format de l'objet : vecteur --> matrixx
+      tir.1esp <- matrix(tir.1esp)
+      tir.2esp <- matrix(tir.2esp,ncol=2,byrow=T)
+      tir.3esp <- matrix(tir.3esp,ncol=3,byrow=T)
+      tir.4esp <- matrix(tir.4esp,ncol=4,byrow=T)
+      tir.5esp <- matrix(tir.5esp,ncol=5,byrow=T)
+      tir.6esp <- matrix(tir.6esp,ncol=6,byrow=T)
+      tir.7esp <- matrix(tir.7esp,ncol=7,byrow=T)
+      tir.8esp <- matrix(tir.8esp,ncol=8,byrow=T)
+      tir.9esp <- matrix(tir.9esp,ncol=9,byrow=T)
+      tir.10esp <- matrix(tir.10esp,ncol=10,byrow=T)
+      tir.11esp <- matrix(tir.11esp,ncol=11,byrow=T)
+      tir.12esp <- matrix(tir.12esp,ncol=12,byrow=T)
+      tir.13esp <- matrix(tir.13esp,ncol=13,byrow=T)
+      tir.14esp <- matrix(tir.14esp,ncol=14,byrow=T)
+      tir.15esp <- matrix(tir.15esp,ncol=15,byrow=T)
+      tir.16esp <- matrix(tir.16esp,ncol=16,byrow=T)
+      tir.17esp <- matrix(tir.17esp,ncol=17,byrow=T)
+      tir.18esp <- matrix(tir.18esp,ncol=18,byrow=T)
+      tir.19esp <- matrix(tir.19esp,ncol=19,byrow=T)
+      tir.20esp <- matrix(tir.20esp,ncol=20,byrow=T)
+      tir.21esp <- matrix(tir.21esp,ncol=21,byrow=T)
+      tir.22esp <- matrix(tir.22esp,ncol=22,byrow=T)
+      tir.23esp <- matrix(tir.23esp,ncol=23,byrow=T)
+      tir.24esp <- matrix(tir.24esp,ncol=24,byrow=T)
+      tir.25esp <- matrix(tir.25esp,ncol=25,byrow=T)
+      tir.26esp <- matrix(tir.26esp,ncol=26,byrow=T)
+      tir.27esp <- matrix(tir.27esp,ncol=27,byrow=T)
+      tir.28esp <- matrix(tir.28esp,ncol=28,byrow=T)
+      tir.29esp <- matrix(tir.29esp,ncol=29,byrow=T)
+      tir.30esp <- matrix(tir.30esp,ncol=30,byrow=T)
+
+      
+      
+      # calcul proba ----
+        # bouclage general
+        # initialisation
+          tab.qt <- data.frame() # formation d'une table qui regroupera tous les quantiles de probabilite d'observation d'une espece rare
+          obs.esp$communs <- as.numeric(obs.esp$prob > 0.1)
+          row.names(obs.esp) <- obs.esp$Nom_espece    
+            
+          for(i in 1:30){
+            nb.esp <- i
+            vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
+            
+            vec.communs <- obs.esp[vec.tir,"communs"]
+            tab.communs <- matrix(vec.communs,nrow = 1000)
+            tab.communs <- cbind(tab.communs,rowSums(tab.communs/ncol(tab.communs)))
+            
+            tab.communs.qt <- quantile(tab.communs[,ncol(tab.communs)],c(0.025,0.5,0.975))
+            tab.qt <- rbind(tab.qt,tab.communs.qt)
+          }
+          
+          # visualisation de la courbe
+            library(ggplot2)
+          ggplot(tab.qt) + geom_point(aes(x = c(rep(1:30)),y=X1)) + geom_line(aes(x = c(rep(1:30)),y=X1)) +
+            geom_ribbon(aes(x=c(rep(1:30)),ymin=X0,ymax=X1.1),alpha=0.5)
+          
+      # test pour tirage de 2 esp
+          vec.tir <- as.vector(tir.2esp)
+          obs.esp$communs <- obs.esp$prob > 0.1
+          row.names(obs.esp) <- obs.esp$Nom_espece
+          
+          vec.communs <- obs.esp[vec.tir,"communs"]
+          tab.communs <- matrix(vec.communs,nrow = 10000)
+          
+          #tab.communs <- as.numeric(apply(tab.communs,1,any))
+          
+          # bootstrap method
+          tab.qt.tri <- data.frame()
+          for(i in 1:100){
+            test <- sample(x = row(tab.communs),size=1000)
+            tab.communs.boot <- tab.communs[test,]
+            tab.communs.boot <- as.numeric(apply(tab.communs.boot,1,any))
+            
+            tab.communs.boot.qt <- quantile(tab.communs.boot,c(0.025,0.5,0.975))
+            
+            
+            tab.qt.tri <- 
+            
+          }
+          
+          
+
+    
+        
+# Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
+  # idee : faire une boucle sur l'ensemble des EPOC , rassembler les residus, calculer moyenne/mediane/ecart-type pour chaque obs (=> regroupement des residus d'EPOC realisee par les differents obs)
+    
+  # preparation
+    # upload du fichier d'observations
+      epoc.envi.observ <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),header=T,sep="\t", dec=","
+                                   , encoding="UTF-8",quote="")
+    # retrait des listes non pris en compte (cf debut du script)
+    del.juin_jui3 <- epoc.envi.observ$ID_liste %in% del.juin_jui
+    epoc.envi.observ <- epoc.envi.observ[which(del.juin_jui3 == FALSE),]
+    
+    del.alt3 <- epoc.envi.observ$ID_liste %in% del.alt
+    epoc.envi.observ <- epoc.envi.observ[which(del.alt3 == FALSE),]
+    
+    del.hour3 <- epoc.envi.observ$ID_liste %in% del.hour
+    epoc.envi.observ <- epoc.envi.observ[which(del.hour3 == FALSE),]
     
     
+    
+    
+    # moyenne / mediane / ecart-type ==> calcul coeff de variation  (ecart-type/moyenne)
+    # need plus de memoire
+    mod.ab.liste <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste,family = "poisson")
 
 
 
@@ -164,7 +353,38 @@
 
 
 
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 
