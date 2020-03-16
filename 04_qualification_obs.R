@@ -478,72 +478,94 @@
                 
           
             # bouclage general (part especes communes dans listes) ----
-              # initialisation
-                tab.qt <- data.frame() # formation d'une table qui regroupera tous les quantiles de probabilite d'observation d'une espece rare
-                champ.esp$communs <- as.numeric(champ.esp$prob > 0.3)
-                row.names(champ.esp) <- champ.esp$Nom_espece    
                 
-              for(i in 1:30){
-                nb.esp <- i
-                vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
+                tab.qt.global.part <- data.frame() # pour stack les 31 miyennes des quantiles
+                champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
+                row.names(champ.esp) <- champ.esp$Nom_espece
+                
+                for(j in 1:31){
+                  nb.esp <- j
                   
-                vec.communs <- champ.esp[vec.tir,"communs"]
-                tab.communs <- matrix(vec.communs,nrow = 10000)
-                tab.communs <- cbind(tab.communs,rowSums(tab.communs/ncol(tab.communs))) # part des especes communes dans une liste
+                  tab.qt <- data.frame()
                   
-                tab.communs.qt <- quantile(tab.communs[,ncol(tab.communs)],c(0.025,0.5,0.975))
-                tab.qt <- rbind(tab.qt,tab.communs.qt)
-              }
-                
-            # visualisation de la courbe
-              library(ggplot2)
-              ggplot(tab.qt) + geom_point(aes(x = c(rep(1:30)),y=tab.qt[,2],ymax=1,ymin=0)) + geom_line(aes(x = c(rep(1:30)),y=tab.qt[,2])) +
-                geom_ribbon(aes(x=c(rep(1:30)),ymin=tab.qt[,1],ymax=tab.qt[,3]),alpha=0.5)
-          
-              # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
-              
-              
-              #tab.communs <- as.numeric(apply(tab.communs,1,any))
-              
-              # bootstrap method
-              
-              tab.qt.global <- data.frame() # pour stack les 31 miyennes des quantiles
-              champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
-              row.names(champ.esp) <- champ.esp$Nom_espece
-              
-              for(j in 1:31){
-                nb.esp <- j
-                
-                tab.qt <- data.frame()
-                
-                vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
-                
-                vec.communs <- champ.esp[vec.tir,"communs"]
-                tab.communs <- matrix(vec.communs,nrow = 10000)
-                
-                for(i in 1:100){
-                  test <- sample(x = row(tab.communs),size=1000)
-                  tab.communs.boot <- tab.communs[test,]
-                  tab.communs.boot <- as.matrix(tab.communs.boot)
-                  tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot)))
+                  vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
                   
-                  tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975))
+                  vec.communs <- champ.esp[vec.tir,"communs"]
+                  tab.communs <- matrix(vec.communs,nrow = 10000)
                   
+                  for(i in 1:100){
+                    test <- sample(x = row(tab.communs),size=1000)
+                    # comm = part en bootstrap
+                    #tab.communs.boot <- tab.communs[test,]
+                    
+                    tab.communs.boot <- as.matrix(tab.communs[test,])
+                    tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot))) # part des especes communes dans une liste
+                    
+                    tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975))
+                    
+                    tab.qt <- rbind(tab.qt,tab.communs.boot.qt)
+                    
+                  }
                   
-                  tab.qt <- rbind(tab.qt,tab.communs.boot.qt)
+                  tab.qt.global.part <- rbind(tab.qt.global.part,apply(X = tab.qt,2,FUN=mean))
+                  cat(nb.esp," /"," 31\n")
                   
                 }
                 
-                tab.qt.global <- rbind(tab.qt.global,apply(tab.qt,2,mean))
-                cat(nb.esp," /"," 31\n")
+                # homogeineisation des noms de colonnes
+                colnames(tab.qt.global.part) <- c("borne_inf","mediane","borne_sup")
+                # visualisation de la courbe
+                ggplot(tab.qt.global.part) + geom_point(aes(x = c(rep(1:31)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:31)),y=mediane)) +
+                  geom_ribbon(aes(x=c(rep(1:31)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Part des especes communes dans la listes") + 
+                  xlab("Nombre d'especes par listes") + ylab("Part en %")
                 
-              }
+                
+              # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
               
-              # visualisation de la courbe [PART DES ESPECES COMMUNES DANS LES LISTES FONCTION DU NOMBRE D'ESPECE OBSERVE PAR LISTE]
+                tab.qt.global.prob <- data.frame() # pour stack les 31 miyennes des quantiles
+                champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
+                row.names(champ.esp) <- champ.esp$Nom_espece
+                
+                for(j in 1:31){
+                  nb.esp <- j
+                  
+                  tab.qt <- data.frame()
+                  
+                  vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
+                  
+                  vec.communs <- champ.esp[vec.tir,"communs"]
+                  tab.communs <- matrix(vec.communs,nrow = 10000)
+                  
+                  for(i in 1:100){
+                    test <- sample(x = row(tab.communs),size=1000)
+                    # comm = part en bootstrap
+                    #tab.communs.boot <- tab.communs[test,]
+                    
+                    tab.communs.boot <- tab.communs[test,]
+                    tab.communs.boot <- as.numeric(apply(as.matrix(tab.communs.boot),1,any))
+                    tab.communs.boot <- sum(tab.communs.boot)/length(tab.communs.boot) # part des especes communes dans une liste
+                    
+                    tab.qt <- rbind(tab.qt,tab.communs.boot)
+                    #tab.communs.boot <- as.matrix(tab.communs.boot)
+                    #tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot)))
+                    #tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975))
+                    
+                    
+                  }
+                  
+                  tab.qt.global.prob <- rbind(tab.qt.global.prob,quantile(x = tab.qt[,1],c(0.025,0.5,0.975)))
+                  cat(nb.esp," /"," 31\n")
+                  
+                }
               
-              ggplot(tab.qt.global) + geom_point(aes(x = c(rep(1:31)),y=X1)) + geom_line(aes(x = c(rep(1:31)),y=X1)) +
-                geom_ribbon(aes(x=c(rep(1:31)),ymin=X0,ymax=X1.1),alpha=0.5)
-    
+                # homogeineisation des noms de colonnes
+                colnames(tab.qt.global.prob) <- c("borne_inf","mediane","borne_sup")
+                # visualisation de la courbe
+                ggplot(tab.qt.global.prob) + geom_point(aes(x = c(rep(1:31)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:31)),y=mediane)) +
+                  geom_ribbon(aes(x=c(rep(1:31)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Proba d'avoir au moins une espece communes dans les listes") + 
+                  xlab("Nombre d'especes par listes") + ylab("Probabilité")
+                
+          
         
 # Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
   # idee : faire une boucle sur l'ensemble des EPOC , rassembler les residus, calculer moyenne/mediane/ecart-type pour chaque obs (=> regroupement des residus d'EPOC realisee par les differents obs)
