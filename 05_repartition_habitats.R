@@ -180,28 +180,6 @@ while(i <= length(id.list)){
     
     
     
-    
-    
-
-#methode 1
-loc.pol <- st_sf(aggregate(loc.obs1$geometry, 
-                           list(loc.obs1$ID_liste),
-                           function(g){
-                             st_cast(st_combine(g),"POLYGON")
-                           }
-                           ),crs=4326)
-
-
-#methode 2
-library(dplyr)
-loc.pol <- loc.obs1 %>%
-  group_by(ID_liste) %>%
-  summarise() %>%
-  st_combine() %>%
-  st_cast("POLYGON")
-
-loc.pol <- loc.pol %>%
-  st_convex_hull()
 
 
 
