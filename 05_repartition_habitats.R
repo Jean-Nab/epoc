@@ -138,13 +138,13 @@ while(i <= length(id.list)){
     
     habi.epoc.tot <- as.data.frame(apply(habi.epoc[,3:ncol(habi.epoc)],2,sum)) 
     habi.epoc.tot$habitat <- rownames(habi.epoc.tot)
-    habi.epoc.tot$EPOC <- TRUE
+    habi.epoc.tot$Points <- "EPOC"
     colnames(habi.epoc.tot)<- c("surface_100m",colnames(habi.epoc.tot[2:ncol(habi.epoc.tot)]))
     #habi.epoc.tot$surface_1km <- (habi.epoc.tot$surface_100m*100)/1000000 # division par 100 -> pour km^2 ?
 
     habi.rand.tot <- as.data.frame(apply(habi.rand[,3:ncol(habi.rand)],2,sum))
     habi.rand.tot$habitat <- rownames(habi.rand.tot)
-    habi.rand.tot$EPOC <- FALSE
+    habi.rand.tot$Points <- "Aléatoire"
     colnames(habi.rand.tot)<- c("surface_100m",colnames(habi.rand.tot[2:ncol(habi.rand.tot)]))
     
     #merging
@@ -154,11 +154,17 @@ while(i <= length(id.list)){
       x <- barplot(habi.epoc.tot)
       y <- barplot(habi.rand.tot)
       
-      ggplot(habi.all.tot, aes(fill=EPOC,y=surface_100x100,x=habitat)) + geom_bar(position = "dodge",stat = "identity")
+      ggplot(habi.all.tot, aes(fill=Points,y=surface_100m,x=habitat)) + geom_bar(position = "dodge",stat = "identity") +
+        xlab("Code habitats") + ylab("Surface d'habitats en ha") +
+        ggtitle("Répartition des habitats : \nPoints d'écoutes EPOCs vs points aléatoires")
       
     
-# issue : moyennage des valeurs raster --> need de prendre les valeurs brutes
-plot(clc) ; plot(fra.adm[0], add=TRUE) ; plot(loc.list,size=5,add=T)    
+# Interpretation
+    # 112 : surr ds epoc [Discontinuous urban fabric] [= ville]
+    # 211 : sous ds epoc [Non-irrigated arable land] [= champ de culture intens]
+    # 231 : bien repre ds epoc [Pastures] = paturage
+    # 311 : legerement sous ds epoc [Broad-leaved forest] ==> foret decidue
+    # 512 : legerement sur ds epoc [Water bodies] ==> zone d'eau (possible points dans des fleuves)
     
     
     
