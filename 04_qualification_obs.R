@@ -380,41 +380,116 @@
                 ggplot(tab.qt.global.prob) + geom_point(aes(x = c(rep(1:31)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:31)),y=mediane)) +
                   geom_ribbon(aes(x=c(rep(1:31)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Proba d'avoir au moins une espece communes dans les listes") + 
                   xlab("Nombre d'especes par listes") + ylab("Probabilité")
+
                 
+ # sauvegarde disque 2 : ----
+  #save.image(file = "C:/git/epoc/qualification_obs_initialisation2.RData")
+                
+  load("C:/git/epoc/qualification_obs_initialisation2.RData")                
+
+                
+                
+# comparaison avec les listes des autres observateurs ------
+    # idee: a partir des proba obtenus par les "champions" je vais les appliquer aux autres listes pour detecter des listes anormales
+    # ex: liste de + de 7 especes sans le presence d'au moins une espece communes
+                
+ # formation du dtf regroupant les observations d'especes des listes "non champions" -----
+      no.champ <- aggregate(Liste_complete ~ Observateur,data=epoc.envi.liste, FUN=sum)
+      no.champ$part_totale <- no.champ$Liste_complete / sum(no.champ$Liste_complete)*100
+                      
+      no.champ.id <- no.champ[no.champ$part_totale <= 2,] # non champion = observateur ayant fait - de 2% des listes
+                      
+      no.champ.id1 <- merge(x = epoc.envi.liste,y=no.champ.id,by="Observateur")
+      
+    # verif
+      length(unique(no.champ.id1$ID_liste)) == sum(no.champ.id$Liste_complete) # TRUE
+  
+  
+    # selection de toutes les observations faites dans les listes de non champions 
+    #==> permet de compter le nb de fois qu'une espece a etait observe par les non champions
+      no.champ.obs <- merge(x = no.champ.id1,y=epoc.oiso,by="ID_liste")
+      # verif
+        length(unique(no.champ.id1$ID_liste)) == length(unique(no.champ.obs$ID_liste)) # TRUE
+    
+    # decompte du nb d'espece dans les listes non champions
+        # formation du dtf regroupant les especes detectee + le nombre d'occurrence d'observation
+        no.champ.oiso <- aggregate(Nombre ~ ID_liste + Observateur.x + Nom_espece,data=no.champ.obs,FUN=sum)                
+    
+  # attribution de mention (communs/rare) selon les resultats des listes champions -------
+    # recuperation des listes champions
+        esp.commun <- champ.esp[which(champ.esp$communs == 1),c("Nom_espece","communs")]
+        esp.commun.vec <- esp.commun$Nom_espece
+        esp.commun.vec <- droplevels(esp.commun.vec)
+        
+        
+        # methode pour gerer les oiseaux rares non detecte dans les listes champions (~100 especes)
+        no.champ.oiso$communs <- FALSE # tous les oiseaux sont consideres comme rare de base
+        no.champ.oiso.id.commun <- no.champ.oiso$Nom_espece %in% esp.commun.vec # detection des lignes contenant des oiseaux consideres comme communs par les champions
+        no.champ.oiso[which(no.champ.oiso.id.commun == TRUE),"communs"] <- TRUE # attribution de la mention commun pour les oiseaux "communs" des champions
+                    
+                
+  # verification de la proba -------
+  # idee : proceder par liste
+  # regarder si les listes suivent la proba (regle generale : 8 especes rares dans une liste de 8 --> mauvaise liste)
+        id.list.no.champ <- unique(no.champ.oiso$ID_liste)
+        
+        no.champ.prob <- data.frame()
+        
+        i <- 1
+        while(i <= length(id.list.no.champ)){
+          dtf.tmp <- no.champ.oiso[no.champ.oiso$ID_liste == id.list.no.champ[i],] # formation du dtf temporaire de la liste i (observation + oiseaux + communs/rares)
           
+          
+          div.tmp <- nrow(dtf.tmp) # infos sur la diversite (nb esp de la liste)
+          pres.comm <- as.numeric(any(dtf.tmp$communs)) # info sur la presence d'au moins une espece dite "commune"
+          
+          no.champ.prob.tmp <- c(id.list.no.champ[i],div.tmp,pres.comm) # formation d'un vecteur rassemblant les infos en amont
+          
+          no.champ.prob <- rbind(no.champ.prob,no.champ.prob.tmp) # append du vecteur de la liste dans un dtf regroupant toutes les listes
+          
+          
+          #cat(i," /",length(id.list.no.champ),"\n")
+          i <- i+1
+        }
+                
+        # modification du noms des colonnes
+          colnames(no.champ.prob) <- c("ID_liste","diversite","least_1_communs")
+          
+# sauvegarde disque 3 : ----
+  # save.image(file = "C:/git/epoc/qualification_obs_initialisation3.RData")
+  load("C:/git/epoc/qualification_obs_initialisation3.RData")
+          
+  # nb listes sans oiseaux communs 
+    length(which(no.champ.prob$least_1_communs == 0)) # 238 listes
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
         
 # Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
   # idee : faire une boucle sur l'ensemble des EPOC , rassembler les residus, calculer moyenne/mediane/ecart-type pour chaque obs (=> regroupement des residus d'EPOC realisee par les differents obs)
-    
-  # preparation
-    # upload du fichier d'observations
-      epoc.envi.observ <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),header=T,sep="\t", dec=","
-                                   , encoding="UTF-8",quote="")
-    # retrait des listes non pris en compte (cf debut du script)
-    del.juin_jui3 <- epoc.envi.observ$ID_liste %in% del.juin_jui
-    epoc.envi.observ <- epoc.envi.observ[which(del.juin_jui3 == FALSE),]
-    
-    del.alt3 <- epoc.envi.observ$ID_liste %in% del.alt
-    epoc.envi.observ <- epoc.envi.observ[which(del.alt3 == FALSE),]
-    
-    del.hour3 <- epoc.envi.observ$ID_liste %in% del.hour
-    epoc.envi.observ <- epoc.envi.observ[which(del.hour3 == FALSE),]
-    
-    
-    
-    
+  load("C:/git/epoc/qualification_obs_initialisation1.RData")  
     # moyenne / mediane / ecart-type ==> calcul coeff de variation  (ecart-type/moyenne)
-    # need plus de memoire
+    
+    
+    
     mod.ab.liste <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste,family = "poisson")
 
-
-    # test sur donnee restreinte
-      champ.id2 <- champ.id1[1:15,]
-      mod.ab.liste <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=champ.id2,family = "poisson")
-
+    mod.ab.liste.nb <- glm.nb(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste)
+    save(mod.ab.liste.nb,file="C:/git/epoc/output/result_models_nb_by_id.RData")
 
 
-
+    load("C:/git/epoc/output/result_models_by_id.RData")
+    # residus ranger en ordre croissant
+    j <- mod.ab.liste$residuals 
 
 
 
