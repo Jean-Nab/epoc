@@ -151,9 +151,6 @@ while(i <= length(id.list)){
       habi.all.tot <- rbind(habi.epoc.tot,habi.rand.tot)
 
     # visualisation
-      x <- barplot(habi.epoc.tot)
-      y <- barplot(habi.rand.tot)
-      
       ggplot(habi.all.tot, aes(fill=Points,y=surface_100m,x=habitat)) + geom_bar(position = "dodge",stat = "identity") +
         xlab("Code habitats") + ylab("Surface d'habitats en ha") +
         ggtitle("Répartition des habitats : \nPoints d'écoutes EPOCs vs points aléatoires")
