@@ -336,7 +336,7 @@
                   xlab("Nombre d'especes par listes") + ylab("Part en %")
                 
                 
-              # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
+            # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
               
                 tab.qt.global.prob <- data.frame() # pour stack les 31 miyennes des quantiles
                 champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
@@ -385,9 +385,7 @@
  # sauvegarde disque 2 : ----
   #save.image(file = "C:/git/epoc/qualification_obs_initialisation2.RData")
                 
-  load("C:/git/epoc/qualification_obs_initialisation2.RData")                
-
-                
+  load("C:/git/epoc/qualification_obs_initialisation2.RData")         
                 
 # comparaison avec les listes des autres observateurs ------
     # idee: a partir des proba obtenus par les "champions" je vais les appliquer aux autres listes pour detecter des listes anormales
@@ -461,17 +459,108 @@
           
   # nb listes sans oiseaux communs 
     length(which(no.champ.prob$least_1_communs == 0)) # 238 listes
+    
+  # flagging des listes anormales ----
+    # flag : trop d'especes rare en une liste
+    # d'apres courbe de proba --> impossible d'avoir une liste de plus de 4 esp sans avoir une espece commune
+      no.champ.prob$flag_many_rare <- c(rep(0,nrow(no.champ.prob)))
+      
+      # detection des listes contenant trop d'especes rares et 0 especes communes
+        id.list.rare <- which(no.champ.prob$diversite >= 4 & no.champ.prob$least_1_communs == 0)
+        no.champ.prob[id.list.rare,"flag_many_rare"] <- 1 ; sum(no.champ.prob$flag_many_rare) # 148 listes flagded
+        
+    # flag : listes de faible div ne contenant que des especes rares
+      no.champ.prob$flag_only_rare_low_div <- c(rep(0,nrow(no.champ.prob)))
+      id.list.rare.low <- which(no.champ.prob$diversite < 4 & no.champ.prob$least_1_communs == 0)
+      no.champ.prob[id.list.rare.low,"flag_only_rare_low_div"] <- 1 ; sum(no.champ.prob$flag_only_rare_low_div) # 90 listes flagged
                 
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
+    # verif du flag de toutes les listes sans oiseaux communs
+      length(which(no.champ.prob$least_1_communs == 0)) == 
+        sum(no.champ.prob$flag_many_rare) + sum(no.champ.prob$flag_only_rare_low_div) # TRUE
+      
+    # Distribution des flags dans les listes des champions ----
+    # formation des listes 
+      champ.oiso$communs <- FALSE # tous les oiseaux sont consideres comme rare de base
+      champ.oiso.id.commun <- champ.oiso$Nom_espece %in% esp.commun.vec # detection des lignes contenant des oiseaux consideres comme communs par les champions
+      champ.oiso[which(champ.oiso.id.commun == TRUE),"communs"] <- TRUE # attribution de la mention commun pour les oiseaux "communs" des champions
+      
+      # attribution des probas
+        id.list.champ <- unique(champ.oiso$ID_liste)
+        
+        champ.prob <- data.frame()
+        
+        i <- 1
+        while(i <= length(id.list.champ)){
+          dtf.tmp <- champ.oiso[champ.oiso$ID_liste == id.list.champ[i],] # formation du dtf temporaire de la liste i (observation + oiseaux + communs/rares)
+          
+          
+          div.tmp <- nrow(dtf.tmp) # infos sur la diversite (nb esp de la liste)
+          pres.comm <- as.numeric(any(dtf.tmp$communs)) # info sur la presence d'au moins une espece dite "commune"
+          
+          champ.prob.tmp <- c(id.list.champ[i],div.tmp,pres.comm) # formation d'un vecteur rassemblant les infos en amont
+          
+          champ.prob <- rbind(champ.prob,champ.prob.tmp) # append du vecteur de la liste dans un dtf regroupant toutes les listes
+          
+          
+          cat(i," /",length(id.list.champ),"\n")
+          i <- i+1
+        }
+        
+        # modification du noms des colonnes
+        colnames(champ.prob) <- c("ID_liste","diversite","least_1_communs")
+        
+      # nb listes sans oiseaux communs 
+        length(which(champ.prob$least_1_communs == 0)) # 37 listes
+        
+        
+      # flag : trop d'especes rare en une liste
+        # d'apres courbe de proba --> impossible d'avoir une liste de plus de 4 esp sans avoir une espece commune
+          champ.prob$flag_many_rare <- c(rep(0,nrow(champ.prob)))
+        
+        # detection des listes contenant trop d'especes rares et 0 especes communes
+          id.list.rare.champ <- which(champ.prob$diversite >= 4 & champ.prob$least_1_communs == 0)
+          champ.prob[id.list.rare.champ,"flag_many_rare"] <- 1 ; sum(champ.prob$flag_many_rare) # 27 listes flagded
+        
+        # flag : listes de faible div ne contenant que des especes rares
+          champ.prob$flag_only_rare_low_div <- c(rep(0,nrow(champ.prob)))
+          id.list.rare.low.champ <- which(champ.prob$diversite < 4 & champ.prob$least_1_communs == 0)
+          champ.prob[id.list.rare.low.champ,"flag_only_rare_low_div"] <- 1 ; sum(champ.prob$flag_only_rare_low_div) # 10 listes flagged
+      
+# check vis-a-vis des donnees faune-france ------
+# idee rassembler les informations liees aux proba et les infos de faune-france
+# formation de dtf synthetiques sur les listes / observateurs
+      list.obs.quali <- as.data.frame(epoc.envi.liste[,c("ID_liste","Observateur")])
+
+      all.prob <- rbind(champ.prob,no.champ.prob)
+      list.obs.quali <- plyr::join(list.obs.quali,all.prob,by="ID_liste") # dtf rassemblant les qualites des listes
+      
+  # rajout du nombre d'epoc realise par l'observateur
+      nb.epoc.obs <- aggregate(Liste_complete ~ Observateur,data=epoc.envi.liste,sum)
+      colnames(nb.epoc.obs) <- c("Observateur","Nb_epoc")
+      list.obs.quali <- plyr::join(list.obs.quali,nb.epoc.obs,by="Observateur")
+      
+  # need de rassembler les infos par observateur
+      aggr.comm <- aggregate(least_1_communs ~ Observateur,data=list.obs.quali,sum)
+      aggr.flag.rare <- aggregate(flag_many_rare ~ Observateur,data=list.obs.quali,sum)
+      aggr.flag.rare.low <- aggregate(flag_only_rare_low_div ~ Observateur,data=list.obs.quali,sum)
+      
+      # join des dtfs
+      aggr.all <- plyr::join(aggr.comm,aggr.flag.rare,by="Observateur")
+      aggr.all <- plyr::join(aggr.all,aggr.flag.rare.low,by="Observateur")
+      
+  # add des infos de qualites observateurs aux donnees faune-france
+      epoc.observateur <- plyr::join(epoc.observateur,nb.epoc.obs,by="Observateur")
+      epoc.observateur <- plyr::join(epoc.observateur,aggr.all,by="Observateur")
+      
+      # representation interressante head(epoc.observateur ; flag many_rare ordered)
+      
+  # calcul de la part des epoc de qualite / epoc avec des flags
+  # determination du "comportement d'observation" de l'observateur
+      epoc.observateur$part_epoc_least_1_communs <- epoc.observateur$least_1_communs / epoc.observateur$Nb_epoc
+      epoc.observateur$part_flag_many_rare <- epoc.observateur$flag_many_rare / epoc.observateur$Nb_epoc
+      epoc.observateur$part_flag_only_rare_low_div <- epoc.observateur$flag_only_rare_low_div / epoc.observateur$Nb_epoc
+      
+      # cmt highlight le combo des deux flag par un meme observateur?
                 
         
 # Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
