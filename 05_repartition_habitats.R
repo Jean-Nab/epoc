@@ -155,14 +155,30 @@ while(i <= length(id.list)){
         xlab("Code habitats") + ylab("Surface d'habitats en ha") +
         ggtitle("Répartition des habitats : \nPoints d'écoutes EPOCs vs points aléatoires")
       
-    
 # Interpretation
     # 112 : surr ds epoc [Discontinuous urban fabric] [= ville]
     # 211 : sous ds epoc [Non-irrigated arable land] [= champ de culture intens]
     # 231 : bien repre ds epoc [Pastures] = paturage
     # 311 : legerement sous ds epoc [Broad-leaved forest] ==> foret decidue
     # 512 : legerement sur ds epoc [Water bodies] ==> zone d'eau (possible points dans des fleuves)
+      
+      
+      
+    # Visualisation de l'ecart de repartition d'habitats
+      # calcul de l'ecart
+        habi.all.merged <- merge(habi.epoc.tot,habi.rand.tot,by="habitat")
+        habi.all.merged$ecart <- abs(habi.all.merged$surface_100m.x - habi.all.merged$surface_100m.y)
+        habi.all.merged$ecart_under_random <- habi.all.merged$ecart / habi.all.merged$surface_100m.y
+        
+      # histogram
+        ggplot(habi.all.merged, aes(y=ecart_under_random,x=habitat,color=habitat,fill=habitat)) + geom_bar(stat = "identity") +
+          xlab("Habitats") + ylab("(Ecart des habitats) / (habitats aléatoirement tirés)") +
+          ggtitle("Visualisation des écarts de représentation des habitats")
+        
+      
     
+# interpretation
+  # grande surrepresentation de 141 [Green urban areas] == espaces verts urbains
     
     
     
