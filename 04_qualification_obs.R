@@ -5,6 +5,7 @@
   library(plyr)
   library(mgcv)
   library(MASS)
+  library(ggExtra)
   
   
   
@@ -565,45 +566,96 @@
         
 # Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
   # idee : faire une boucle sur l'ensemble des EPOC , rassembler les residus, calculer moyenne/mediane/ecart-type pour chaque obs (=> regroupement des residus d'EPOC realisee par les differents obs)
-  load("C:/git/epoc/qualification_obs_initialisation1.RData")  
     # moyenne / mediane / ecart-type ==> calcul coeff de variation  (ecart-type/moyenne)
-    
-    
-    
+  # Modeles :-----
+    load("C:/git/epoc/qualification_obs_initialisation1.RData")
     mod.ab.liste <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste,family = "poisson")
-
+    save(mod.ab.liste.nb,file="C:/git/epoc/output/result_models_by_id.RData")
+    
     mod.ab.liste.nb <- glm.nb(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste)
     save(mod.ab.liste.nb,file="C:/git/epoc/output/result_models_nb_by_id.RData")
 
-
+  # association residus des listes aux observateurs
     load("C:/git/epoc/output/result_models_by_id.RData")
-    # residus ranger en ordre croissant
-    j <- mod.ab.liste$residuals 
+    # residus du modele = ranger en ordre croissant 
+      resi.list <- mod.ab.liste$residuals
+      list.obs.quali <- list.obs.quali[order(list.obs.quali$ID_liste),]
 
+      list.obs.quali$residus_liste <- resi.list
+    
+    # calcul moyenne / ecart-type / mediane pour chaque observateur
+      # moyenne
+        resi.obs.mean <- aggregate(residus_liste ~ Observateur,data=list.obs.quali,mean) # moyenne des residus par observateurs
+        colnames(resi.obs.mean) <- c("Observateur","residus_mean")
+      
+      # ecart-type
+        resi.obs.sd <- aggregate(residus_liste ~ Observateur,data=list.obs.quali,sd)
+        colnames(resi.obs.sd) <- c("Observateur","residus_sd")
+          # NA --> observateurs ayant fait qu'une liste
+        resi.obs.sd[which(is.na(resi.obs.sd$residus_sd)),"residus_sd"] <- 0
 
+      # mediane
+        resi.obs.med <- aggregate(residus_liste ~ Observateur,data=list.obs.quali,median)
+        colnames(resi.obs.med) <- c("Observateur","residus_median")
+    
+    
+    # join des informations sur le dtf epoc.observateur (dtf de la qualite des observateurs)
+      epoc.observateur <- join(epoc.observateur,resi.obs.mean,by="Observateur")
+      epoc.observateur <- join(epoc.observateur,resi.obs.sd, by="Observateur")
+      epoc.observateur <- join(epoc.observateur,resi.obs.med, by="Observateur")
+      epoc.observateur$residus_coeff_var <- epoc.observateur$residus_sd / epoc.observateur$residus_mean 
+    
+      
+    # indicateur 1 : flags sur especes rare
+      indic1 <- epoc.observateur[,c("Observateur","Nb_epoc","least_1_communs","flag_many_rare","flag_only_rare_low_div","part_epoc_least_1_communs",
+                                    "part_flag_many_rare","part_flag_only_rare_low_div")]
 
-
+    # indicateur 2 : residus par observateurs
+      indic2 <- epoc.observateur[,c("Observateur","Nb_epoc","residus_mean","residus_sd","residus_median","residus_coeff_var")]
+    
+# sauvegarde disque 4 : ----
+  # save.image(file = "C:/git/epoc/qualification_obs_initialisation4.RData")
+  load("C:/git/epoc/qualification_obs_initialisation4.RData")    
+    
+# Zoom sur les indicateurs : interactions / cmt ils structurent le jeu de donnees   
+    # structuration du jeu de donnees par les flags
+      flag.plot <- ggplot(epoc.observateur) + 
+        geom_jitter(aes(x=flag_only_rare_low_div,
+                        y=flag_many_rare,color=Nb_epoc,
+                        size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
+                        alpha=Nb_epoc)) +
+        geom_smooth(aes(x=flag_only_rare_low_div,
+                        y=flag_many_rare, weight=Nb_epoc),
+                    method="lm") +
+        xlab("Nombre de flag : Only rare sp dans listes de moins de 4 espèces") +
+        ylab("Nombre de flag : Only rare sp ds listes de plus de 4 espèces") +
+        ggtitle("Structuration du jeu de données par l'indicateur des flags")
+      plot(flag.plot)
+      
+        
+      ggExtra::ggMarginal(flag.plot, type = "histogram")
+      
+      
+    # structuration du jeu de donnees par les residus
+      resi.plot <- ggplot(indic2) +
+        geom_jitter(aes(x=residus_coeff_var
+                        ,y=residus_mean,color=Nb_epoc,
+                        size=Nb_epoc,
+                        alpha=Nb_epoc)) +
+        geom_smooth(aes(x=residus_coeff_var,
+                        y=residus_mean), method="lm") +
+        xlab("Coefficient de variation des résidus") +
+        ylab("Moyenne des résidus") +
+        ggtitle("Structuration du jeu de données par les résidus")
+      plot(resi.plot)    
     
     
+      ggExtra::ggMarginal(resi.plot, type = "histogram")
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    # table de correlation
+      cor.indic <- epoc.observateur[,c("residus_mean","residus_coeff_var","flag_many_rare","flag_only_rare_low_div")]
+      
+      corrplot::corrplot(cor(cor.indic,method="spearman"),method="number") # 0 correlation entre les indicateurs
     
     
     
