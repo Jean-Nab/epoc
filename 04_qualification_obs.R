@@ -624,6 +624,7 @@
                         y=flag_many_rare,color=Nb_epoc,
                         size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
                         alpha=Nb_epoc)) +
+        scale_color_gradient(low="blue",high="red") +
         geom_smooth(aes(x=flag_only_rare_low_div,
                         y=flag_many_rare, weight=Nb_epoc),
                     method="lm") +
@@ -635,6 +636,21 @@
         
       ggExtra::ggMarginal(flag.plot, type = "histogram")
       
+      '
+      flag.plot <- ggplot(epoc.observateur) + 
+        geom_jitter(aes(x=flag_only_rare_low_div,
+                        y=flag_many_rare,color=Nb_epoc,
+                        size=1-part_epoc_least_1_communs,
+                        alpha=(1 -part_epoc_least_1_communs)*0.5)) + # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
+        scale_color_gradient(low="green",high="red") +
+        geom_smooth(aes(x=flag_only_rare_low_div,
+                        y=flag_many_rare, weight=Nb_epoc),
+                    method="lm") +
+        xlab("Nombre de flag : Only rare sp dans listes de moins de 4 espèces") +
+        ylab("Nombre de flag : Only rare sp ds listes de plus de 4 espèces") +
+        ggtitle("Structuration du jeu de données par l indicateur des flags")
+      plot(flag.plot)
+      '
       
     # structuration du jeu de donnees par les residus
       resi.plot <- ggplot(indic2) +
@@ -651,6 +667,28 @@
     
     
       ggExtra::ggMarginal(resi.plot, type = "histogram")
+      
+      
+      # retrait des residus outliner
+        indic2.1 <- indic2[indic2$residus_coeff_var > -2,]
+        
+        resi1.plot <- ggplot(indic2.1) +
+          geom_jitter(aes(x=residus_coeff_var
+                          ,y=residus_mean,color=Nb_epoc,
+                          size=Nb_epoc,
+                          alpha=Nb_epoc)) +
+          geom_smooth(aes(x=residus_coeff_var,
+                          y=residus_mean), method="lm") +
+          xlab("Coefficient de variation des résidus") +
+          ylab("Moyenne des résidus") +
+          ggtitle("Structuration du jeu de données par les résidus \nRetrait des outliners")
+        plot(resi1.plot)  
+        
+        ggExtra::ggMarginal(resi1.plot, type = "histogram")
+        
+      # detection des observateurs outliners de residus / cb d'epoc retirer
+        dif.indic2 <- indic2$Observateur %in% indic2.1$Observateur
+        head(indic2[which(dif.indic2 == FALSE),])
     
     # table de correlation
       cor.indic <- epoc.observateur[,c("residus_mean","residus_coeff_var","flag_many_rare","flag_only_rare_low_div")]
@@ -658,7 +696,9 @@
       corrplot::corrplot(cor(cor.indic,method="spearman"),method="number") # 0 correlation entre les indicateurs
     
     
-    
+# sauvegarde disque 5 (special plot / rm(epoc/EPOC.obs/mod.ab.liste)) : ----
+# save.image(file = "C:/git/epoc/qualification_obs_initialisation5.RData")
+load("C:/git/epoc/qualification_obs_initialisation5.RData")    
     
     
     
