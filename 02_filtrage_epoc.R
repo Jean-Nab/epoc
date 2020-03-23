@@ -38,11 +38,12 @@ setwd("C:/git/epoc/data")
             obs_liste <- which(epoc[,"ID_liste"] %in%  ID.rq) # recherche de toutes les lignes avec un ID_liste contenu dans ID.rq
             
             epoc[obs_liste,"Remarque"] <- "EPOC" # attribution de la mention EPOC aux observations
+            rq1 <- grep("EPOC",toupper(epoc[,"Remarque"]))
             
         # Filtrage du jeu de donnees afin d'avoir uniquement les observations ou la mention epoc est integrer
             comm <- grep("EPOC",toupper(epoc[,"Commentaire_de_la_liste"])) # detection des lignes contenant la mention epoc dans la colonne commentaire
             
-            comm_rq <- union(comm,rq) # concatenation des 2 vecteurs renseignant les positions sans prendre en compte les doublons
+            comm_rq <- union(comm,rq1) # concatenation des 2 vecteurs renseignant les positions sans prendre en compte les doublons
           
             epoc.filt1 <- epoc[comm_rq,] # formation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
           
