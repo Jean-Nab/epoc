@@ -182,7 +182,7 @@ while(i <= length(id.list)){
     
     
 # SAUVEGARDE DE L'IMAGE SUR DISQUE de l'amont -----
-save.image("C:/git/epoc/extraction_land_use3.RData")
+#save.image("C:/git/epoc/extraction_land_use3.RData")
 load("C:/git/epoc/extraction_land_use3.RData")    
     
     
