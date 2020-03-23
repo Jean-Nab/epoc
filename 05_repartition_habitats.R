@@ -181,7 +181,9 @@ while(i <= length(id.list)){
   # grande surrepresentation de 141 [Green urban areas] == espaces verts urbains
     
     
-    
+# SAUVEGARDE DE L'IMAGE SUR DISQUE de l'amont -----
+save.image("C:/git/epoc/extraction_land_use3.RData")
+load("C:/git/epoc/extraction_land_use3.RData")    
     
     
     
