@@ -49,6 +49,7 @@ setwd("C:/git/epoc/data")
           
             
             epoc.filt1bis <- epoc[-comm_rq,]
+            epoc.filt1bis <- epoc.filt1bis[epoc.filt1bis$Annee == 2017,]
             
         # Enregistrement sur le disque
             write.table(x = epoc.filt1, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_1.txt"),sep="\t",dec=","
