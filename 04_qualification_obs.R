@@ -124,7 +124,7 @@
       corpus.tmp <- aggregate(Nombre ~ Nom_espece + Observateur,data=EPOC.tmp,FUN=sum) # nombre d'observation totale de toutes les especes vu par l'observateur i
       dtf.tmp <- aggregate(Nombre ~ ID_liste + Nom_espece,data=EPOC.tmp,FUN=sum) # nombre d'observation (en retirant les doublons) fait par l'observateur
       
-      nb.meet.tmp <- count(dtf.tmp$Nom_espece)
+      nb.meet.tmp <- plyr::count(dtf.tmp$Nom_espece)
       colnames(nb.meet.tmp) <- c("Nom_espece","Nb_rencontre_liste")
       nb.meet.tmp$Observateur <- c(rep(id.obs[i],nrow(nb.meet.tmp)))
       
@@ -165,7 +165,7 @@
   #         calculer la probiblite d'observer une espece parmis le nombre moyens d'observations par liste (== diversite_liste)
     
   # recuperation du nombre total d'observations faites par espece
-    obs.esp <- count(epoc.oiso$Nom_espece)
+    obs.esp <- plyr::count(epoc.oiso$Nom_espece)
     colnames(obs.esp) <- c("Nom_espece","count")
     obs.esp <- obs.esp[order(obs.esp$count,decreasing = T),] # Nombre d'observations par espece selon les listes
 
@@ -223,7 +223,9 @@
                 tir.25esp <- c();       tir.26esp <- c()
                 tir.27esp <- c();       tir.28esp <- c()
                 tir.29esp <- c();       tir.30esp <- c()
-                tir.31esp <- c()
+                tir.31esp <- c();       tir.32esp <- c()
+                tir.33esp <- c();       tir.34esp <- c()
+                tir.35esp <- c()
                 
                 for(i in 1:10000){
                   tir.1esp <- append(tir.1esp,as.character(sample(x = champ.esp$Nom_espece,size=1,replace=FALSE,prob = champ.esp$prob)))
@@ -257,6 +259,11 @@
                   tir.29esp <- append(tir.29esp,as.character(sample(x = champ.esp$Nom_espece,size=29,replace=FALSE,prob = champ.esp$prob)))
                   tir.30esp <- append(tir.30esp,as.character(sample(x = champ.esp$Nom_espece,size=30,replace=FALSE,prob = champ.esp$prob)))
                   tir.31esp <- append(tir.31esp,as.character(sample(x = champ.esp$Nom_espece,size=31,replace=FALSE,prob = champ.esp$prob)))
+                  tir.32esp <- append(tir.32esp,as.character(sample(x = champ.esp$Nom_espece,size=32,replace=FALSE,prob = champ.esp$prob)))
+                  tir.33esp <- append(tir.33esp,as.character(sample(x = champ.esp$Nom_espece,size=33,replace=FALSE,prob = champ.esp$prob)))
+                  tir.34esp <- append(tir.34esp,as.character(sample(x = champ.esp$Nom_espece,size=34,replace=FALSE,prob = champ.esp$prob)))
+                  tir.35esp <- append(tir.35esp,as.character(sample(x = champ.esp$Nom_espece,size=35,replace=FALSE,prob = champ.esp$prob)))
+                  
                   
                 }
                 
@@ -292,18 +299,25 @@
                 tir.29esp <- matrix(tir.29esp,ncol=29,byrow=T)
                 tir.30esp <- matrix(tir.30esp,ncol=30,byrow=T)
                 tir.31esp <- matrix(tir.31esp,ncol=31,byrow=T)
+                tir.32esp <- matrix(tir.32esp,ncol=32,byrow=T)
+                tir.33esp <- matrix(tir.33esp,ncol=33,byrow=T)
+                tir.34esp <- matrix(tir.34esp,ncol=34,byrow=T)
+                tir.35esp <- matrix(tir.35esp,ncol=35,byrow=T)
                 
           
             # bouclage general (part especes communes dans listes) ----
                 
-                tab.qt.global.part <- data.frame() # pour stack les 31 miyennes des quantiles
+                tab.qt.global.part <- data.frame() # pour stack les 35 moyennes des quantiles
+                tab.qt.global.part2 <- data.frame()
+                
                 champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
                 row.names(champ.esp) <- champ.esp$Nom_espece
                 
-                for(j in 1:31){
+                for(j in 1:35){
                   nb.esp <- j
                   
-                  tab.qt <- data.frame()
+                  tab.qt <- data.frame() # dtf 95%
+                  tab.qt2 <- data.frame() # dtf 99%
                   
                   vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
                   
@@ -318,32 +332,48 @@
                     tab.communs.boot <- as.matrix(tab.communs[test,])
                     tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot))) # part des especes communes dans une liste
                     
-                    tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975))
+                    tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975)) # montre 95% des data
+                    tab.communs.boot.qt2 <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.005,0.5,0.995)) # montre 99% des data
+                    
+                    min_max <- c(min(tab.communs.boot[,ncol(tab.communs.boot)]),max(tab.communs.boot[,ncol(tab.communs.boot)]))
+                    
+                    tab.communs.boot.qt <- append(tab.communs.boot.qt,min_max)
+                    tab.communs.boot.qt2 <- append(tab.communs.boot.qt2,min_max)
                     
                     tab.qt <- rbind(tab.qt,tab.communs.boot.qt)
+                    tab.qt2 <- rbind(tab.qt2,tab.communs.boot.qt2)
                     
                   }
                   
                   tab.qt.global.part <- rbind(tab.qt.global.part,apply(X = tab.qt,2,FUN=mean))
-                  cat(nb.esp," /"," 31\n")
+                  tab.qt.global.part2 <- rbind(tab.qt.global.part2,apply(X = tab.qt2,2,FUN=mean))
+                  cat(nb.esp," /"," 35\n")
                   
                 }
                 
                 # homogeineisation des noms de colonnes
-                colnames(tab.qt.global.part) <- c("borne_inf","mediane","borne_sup")
+                colnames(tab.qt.global.part) <- c("borne_inf","mediane","borne_sup","min","max")
+                colnames(tab.qt.global.part2) <- c("borne_inf","mediane","borne_sup","min","max")
+                
                 # visualisation de la courbe
-                ggplot(tab.qt.global.part) + geom_point(aes(x = c(rep(1:31)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:31)),y=mediane)) +
-                  geom_ribbon(aes(x=c(rep(1:31)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Part des especes communes dans la listes") + 
+                ggplot(tab.qt.global.part) + geom_point(aes(x = c(rep(1:35)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:35)),y=mediane)) +
+                  geom_ribbon(aes(x=c(rep(1:35)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Part des especes communes dans la listes (95%)") + 
+                  geom_ribbon(aes(x=c(rep(1:35)),ymin=min,ymax=max),alpha=0.15)+
                   xlab("Nombre d'especes par listes") + ylab("Part en %")
                 
                 
+                ggplot(tab.qt.global.part2) + geom_point(aes(x = c(rep(1:35)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:35)),y=mediane)) +
+                  geom_ribbon(aes(x=c(rep(1:35)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Part des especes communes dans la listes (99%)") + 
+                  geom_ribbon(aes(x=c(rep(1:35)),ymin=min,ymax=max),alpha=0.15)+
+                  xlab("Nombre d'especes par listes") + ylab("Part en %")
+                
             # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
               
-                tab.qt.global.prob <- data.frame() # pour stack les 31 miyennes des quantiles
+                tab.qt.global.prob <- data.frame() # pour stack les 35 miyennes des quantiles
                 champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
                 row.names(champ.esp) <- champ.esp$Nom_espece
                 
-                for(j in 1:31){
+                for(j in 1:35){
                   nb.esp <- j
                   
                   tab.qt <- data.frame()
@@ -371,15 +401,15 @@
                   }
                   
                   tab.qt.global.prob <- rbind(tab.qt.global.prob,quantile(x = tab.qt[,1],c(0.025,0.5,0.975)))
-                  cat(nb.esp," /"," 31\n")
+                  cat(nb.esp," /"," 35\n")
                   
                 }
               
                 # homogeineisation des noms de colonnes
                 colnames(tab.qt.global.prob) <- c("borne_inf","mediane","borne_sup")
                 # visualisation de la courbe
-                ggplot(tab.qt.global.prob) + geom_point(aes(x = c(rep(1:31)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:31)),y=mediane)) +
-                  geom_ribbon(aes(x=c(rep(1:31)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Proba d'avoir au moins une espece communes dans les listes") + 
+                ggplot(tab.qt.global.prob) + geom_point(aes(x = c(rep(1:35)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:35)),y=mediane)) +
+                  geom_ribbon(aes(x=c(rep(1:35)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Proba d'avoir au moins une espece communes dans les listes") + 
                   xlab("Nombre d'especes par listes") + ylab("Probabilité")
 
                 
@@ -438,46 +468,66 @@
         while(i <= length(id.list.no.champ)){
           dtf.tmp <- no.champ.oiso[no.champ.oiso$ID_liste == id.list.no.champ[i],] # formation du dtf temporaire de la liste i (observation + oiseaux + communs/rares)
           
-          
+          # recuperation d'information de la liste
           div.tmp <- nrow(dtf.tmp) # infos sur la diversite (nb esp de la liste)
           pres.comm <- as.numeric(any(dtf.tmp$communs)) # info sur la presence d'au moins une espece dite "commune"
+          part.comm <- length(which(dtf.tmp$communs == TRUE)) / nrow(dtf.tmp) # calcul de la part d'especes communes
           
-          no.champ.prob.tmp <- c(id.list.no.champ[i],div.tmp,pres.comm) # formation d'un vecteur rassemblant les infos en amont
+          
+          no.champ.prob.tmp <- c(id.list.no.champ[i],div.tmp,pres.comm,part.comm) # formation d'un vecteur rassemblant les infos en amont
           
           no.champ.prob <- rbind(no.champ.prob,no.champ.prob.tmp) # append du vecteur de la liste dans un dtf regroupant toutes les listes
           
           
-          #cat(i," /",length(id.list.no.champ),"\n")
+          cat(i," /",length(id.list.no.champ),"\n")
           i <- i+1
         }
                 
         # modification du noms des colonnes
-          colnames(no.champ.prob) <- c("ID_liste","diversite","least_1_communs")
+          colnames(no.champ.prob) <- c("ID_liste","diversite","least_1_communs","part_of_communs")
           
 # sauvegarde disque 3 : ----
   # save.image(file = "C:/git/epoc/qualification_obs_initialisation3.RData")
   load("C:/git/epoc/qualification_obs_initialisation3.RData")
           
   # nb listes sans oiseaux communs 
-    length(which(no.champ.prob$least_1_communs == 0)) # 238 listes
+    length(which(no.champ.prob$least_1_communs == 0)) # 529 listes
     
   # flagging des listes anormales ----
     # flag : trop d'especes rare en une liste
     # d'apres courbe de proba --> impossible d'avoir une liste de plus de 4 esp sans avoir une espece commune
       no.champ.prob$flag_many_rare <- c(rep(0,nrow(no.champ.prob)))
       
-      # detection des listes contenant trop d'especes rares et 0 especes communes
+    # detection des listes contenant trop d'especes rares et 0 especes communes
         id.list.rare <- which(no.champ.prob$diversite >= 4 & no.champ.prob$least_1_communs == 0)
-        no.champ.prob[id.list.rare,"flag_many_rare"] <- 1 ; sum(no.champ.prob$flag_many_rare) # 148 listes flagded
+        no.champ.prob[id.list.rare,"flag_many_rare"] <- 1 ; sum(no.champ.prob$flag_many_rare) # 313 listes flagged
         
     # flag : listes de faible div ne contenant que des especes rares
       no.champ.prob$flag_only_rare_low_div <- c(rep(0,nrow(no.champ.prob)))
       id.list.rare.low <- which(no.champ.prob$diversite < 4 & no.champ.prob$least_1_communs == 0)
-      no.champ.prob[id.list.rare.low,"flag_only_rare_low_div"] <- 1 ; sum(no.champ.prob$flag_only_rare_low_div) # 90 listes flagged
+      no.champ.prob[id.list.rare.low,"flag_only_rare_low_div"] <- 1 ; sum(no.champ.prob$flag_only_rare_low_div) # 216 listes flagged
                 
     # verif du flag de toutes les listes sans oiseaux communs
       length(which(no.champ.prob$least_1_communs == 0)) == 
         sum(no.champ.prob$flag_many_rare) + sum(no.champ.prob$flag_only_rare_low_div) # TRUE
+      
+    # flag des listes ayant aperçus moins d'especes communes que l'attendu
+      # selection des listes ayant aperçus au moins une espece communes (vs redondance w/ flag only rare / many rare)
+        tab.qt.global.part$diversite <- c(rep(1:nrow(tab.qt.global.part))) # add d'une colonne renseignant sur la div
+        no.champ.prob.comm <- no.champ.prob[which(no.champ.prob$least_1_communs==1),]
+        
+        # formation d'un dtf regroupant les resultats theoriques et empirique selon la diversite (nb esp observe par liste)
+          no.champ.part.emp_th <- join(no.champ.prob.comm,tab.qt.global.part,by="diversite")
+          
+      # flagging
+        id.emp_th <-  no.champ.part.emp_th[which(no.champ.part.emp_th$part_of_communs <= no.champ.part.emp_th$borne_inf),"ID_liste"]
+
+      # rajout de l'information dans le dtf regroupant tout les listes no.champ
+        no.champ.prob$flag_scarce_communs <- 0
+        id.no.champ.prob <-  no.champ.prob$ID_liste %in%  id.emp_th
+        
+        no.champ.prob[which(id.no.champ.prob==TRUE),"flag_scarce_communs"] <- 1
+      
       
     # Distribution des flags dans les listes des champions ----
     # formation des listes 
@@ -497,8 +547,9 @@
           
           div.tmp <- nrow(dtf.tmp) # infos sur la diversite (nb esp de la liste)
           pres.comm <- as.numeric(any(dtf.tmp$communs)) # info sur la presence d'au moins une espece dite "commune"
+          part.comm <- length(which(dtf.tmp$communs == TRUE)) / nrow(dtf.tmp) # calcul de la part d'especes communes
           
-          champ.prob.tmp <- c(id.list.champ[i],div.tmp,pres.comm) # formation d'un vecteur rassemblant les infos en amont
+          champ.prob.tmp <- c(id.list.champ[i],div.tmp,pres.comm,part.comm) # formation d'un vecteur rassemblant les infos en amont
           
           champ.prob <- rbind(champ.prob,champ.prob.tmp) # append du vecteur de la liste dans un dtf regroupant toutes les listes
           
@@ -508,10 +559,10 @@
         }
         
         # modification du noms des colonnes
-        colnames(champ.prob) <- c("ID_liste","diversite","least_1_communs")
+        colnames(champ.prob) <- c("ID_liste","diversite","least_1_communs","part_of_communs")
         
       # nb listes sans oiseaux communs 
-        length(which(champ.prob$least_1_communs == 0)) # 37 listes
+        length(which(champ.prob$least_1_communs == 0)) # 35 listes
         
         
       # flag : trop d'especes rare en une liste
@@ -520,13 +571,32 @@
         
         # detection des listes contenant trop d'especes rares et 0 especes communes
           id.list.rare.champ <- which(champ.prob$diversite >= 4 & champ.prob$least_1_communs == 0)
-          champ.prob[id.list.rare.champ,"flag_many_rare"] <- 1 ; sum(champ.prob$flag_many_rare) # 27 listes flagded
+          champ.prob[id.list.rare.champ,"flag_many_rare"] <- 1 ; sum(champ.prob$flag_many_rare) # 36 listes flagded
         
         # flag : listes de faible div ne contenant que des especes rares
           champ.prob$flag_only_rare_low_div <- c(rep(0,nrow(champ.prob)))
           id.list.rare.low.champ <- which(champ.prob$diversite < 4 & champ.prob$least_1_communs == 0)
-          champ.prob[id.list.rare.low.champ,"flag_only_rare_low_div"] <- 1 ; sum(champ.prob$flag_only_rare_low_div) # 10 listes flagged
+          champ.prob[id.list.rare.low.champ,"flag_only_rare_low_div"] <- 1 ; sum(champ.prob$flag_only_rare_low_div) # 14 listes flagged
       
+        # flag des listes ayant aperçus moins d'especes communes que l'attendu
+          # selection des listes ayant aperçus au moins une espece communes (vs redondance w/ flag only rare / many rare)
+            tab.qt.global.part$diversite <- c(rep(1:nrow(tab.qt.global.part))) # add d'une colonne renseignant sur la div
+            champ.prob.comm <- champ.prob[which(champ.prob$least_1_communs==1),]
+            
+          # formation d'un dtf regroupant les resultats theoriques et empirique selon la diversite (nb esp observe par liste)
+            champ.part.emp_th <- join(champ.prob.comm,tab.qt.global.part,by="diversite")
+          
+          # flagging
+            id.emp_th <-  champ.part.emp_th[which(champ.part.emp_th$part_of_communs <= champ.part.emp_th$borne_inf),"ID_liste"]
+          
+          # rajout de l'information dans le dtf regroupant tout les listes champ
+            champ.prob$flag_scarce_communs <- 0
+            id.champ.prob <-  champ.prob$ID_liste %in%  id.emp_th
+          
+            champ.prob[which(id.champ.prob==TRUE),"flag_scarce_communs"] <- 1
+          
+          
+          
 # check vis-a-vis des donnees faune-france ------
 # idee rassembler les informations liees aux proba et les infos de faune-france
 # formation de dtf synthetiques sur les listes / observateurs
@@ -544,10 +614,14 @@
       aggr.comm <- aggregate(least_1_communs ~ Observateur,data=list.obs.quali,sum)
       aggr.flag.rare <- aggregate(flag_many_rare ~ Observateur,data=list.obs.quali,sum)
       aggr.flag.rare.low <- aggregate(flag_only_rare_low_div ~ Observateur,data=list.obs.quali,sum)
+      aggr.flag.comm.scarc <- aggregate(flag_scarce_communs ~ Observateur,data=list.obs.quali,sum)
+
       
       # join des dtfs
       aggr.all <- plyr::join(aggr.comm,aggr.flag.rare,by="Observateur")
       aggr.all <- plyr::join(aggr.all,aggr.flag.rare.low,by="Observateur")
+      aggr.all <- plyr::join(aggr.all,aggr.flag.comm.scarc,by="Observateur")
+
       
   # add des infos de qualites observateurs aux donnees faune-france
       epoc.observateur <- plyr::join(epoc.observateur,nb.epoc.obs,by="Observateur")
@@ -560,20 +634,90 @@
       epoc.observateur$part_epoc_least_1_communs <- epoc.observateur$least_1_communs / epoc.observateur$Nb_epoc
       epoc.observateur$part_flag_many_rare <- epoc.observateur$flag_many_rare / epoc.observateur$Nb_epoc
       epoc.observateur$part_flag_only_rare_low_div <- epoc.observateur$flag_only_rare_low_div / epoc.observateur$Nb_epoc
-      
-      # cmt highlight le combo des deux flag par un meme observateur?
-                
+      epoc.observateur$part_flag_scarce_communs <- epoc.observateur$flag_scarce_communs / epoc.observateur$Nb_epoc
+
         
+      
+# sauvegarde disque 4 : ----
+ # save.image(file = "C:/git/epoc/qualification_obs_initialisation4.RData")
+ load("C:/git/epoc/qualification_obs_initialisation4.RData")       
+      
+      
+      
+      
 # Calcul des residus liees a l'observateur, plus ajout dans la table epoc.observateur ----
   # idee : faire une boucle sur l'ensemble des EPOC , rassembler les residus, calculer moyenne/mediane/ecart-type pour chaque obs (=> regroupement des residus d'EPOC realisee par les differents obs)
     # moyenne / mediane / ecart-type ==> calcul coeff de variation  (ecart-type/moyenne)
   # Modeles :-----
     load("C:/git/epoc/qualification_obs_initialisation1.RData")
-    mod.ab.liste <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste,family = "poisson")
-    save(mod.ab.liste.nb,file="C:/git/epoc/output/result_models_by_id.RData")
+    library(speedglm)
+    library(MASS)
+    rm(epoc) ; rm(EPOC.obs)
     
+    
+    te <- sample(c(rep(1:nrow(epoc.envi.liste))),size=4000)
+    epoc.env <- epoc.envi.liste[te,]
+    
+    te1 <- sample(c(rep(1:nrow(epoc.envi.liste))),size=8000)
+    epoc.env1 <- epoc.envi.liste[te1,]
+    
+    
+    # modele sur sample 4000
+    start_glm <- proc.time()
+    mod.ab.liste.nb.samp <- glm.nb(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.env)
+    end_glm <- proc.time() # 22min
+    save(mod.ab.liste.nb.samp,file="C:/git/epoc/output/result_models_nb_by_id_sampled.RData")
+    rm(mod.ab.liste.nb.samp)
+    
+    
+    start_spe.glm <- proc.time()
+    mod.ab.liste.qp.samp <-glm(Abondance_liste ~ Mois + Annee + as.factor(ID_liste), data=epoc.env,family = "quasipoisson")
+    end_spe.glm <- proc.time()
+    save(mod.ab.liste.qp.samp,file="C:/git/epoc/output/result_models_qp_by_id_sampled.RData")
+    rm(mod.ab.liste.qp.samp)
+    
+    mod.ab.liste.poi.samp <- glm(Abondance_liste ~ Mois + Annee + as.factor(ID_liste), data=epoc.env,family = "poisson")
+    save(mod.ab.liste.poi.samp,file="C:/git/epoc/output/result_models_poi_by_id_sampled.RData")
+    rm(mod.ab.liste.poi.samp)
+    
+
+    # modele sur sample 8000
+    start1_glm <- proc.time()
+    mod.ab.liste.nb.samp1 <- glm.nb(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.env1)
+    end1_glm <- proc.time() # 
+    save(mod.ab.liste.nb.samp1,file="C:/git/epoc/output/result_models_nb_by_id_sampled8000.RData")
+    rm(mod.ab.liste.nb.samp1)
+    
+    
+    start1_spe.glm <- proc.time()
+    mod.ab.liste.qp.samp1 <-glm(Abondance_liste ~ Mois + Annee + as.factor(ID_liste), data=epoc.env1,family = "quasipoisson")
+    end1_spe.glm <- proc.time()
+    save(mod.ab.liste.qp.samp1,file="C:/git/epoc/output/result_models_qp_by_id_sampled8000.RData")
+    rm(mod.ab.liste.qp.samp1)
+    
+    mod.ab.liste.poi.samp1 <- glm(Abondance_liste ~ Mois + Annee + as.factor(ID_liste), data=epoc.env1,family = "poisson")
+    save(mod.ab.liste.poi.samp1,file="C:/git/epoc/output/result_models_poi_by_id_sampled8000.RData")
+    rm(mod.ab.liste.poi.samp1)
+    
+    
+    
+    
+    start_glm <- proc.time()
     mod.ab.liste.nb <- glm.nb(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste)
+    end_glm <- proc.time()
     save(mod.ab.liste.nb,file="C:/git/epoc/output/result_models_nb_by_id.RData")
+    
+    end_glm - start_glm
+    rm(mod.ab.liste.nb)
+    
+    mod <- speedglm(Abondance_liste ~ Mois + Annee + as.factor(ID_liste), data=epoc.envi.liste,family = "quasipoisson")
+    save(mod,file="C:/git/epoc/output/result_models_by_id.RData")
+    
+    mod.ab.liste.qp <- glm(Abondance_liste ~ Mois + Annee  + as.factor(ID_liste) , data=epoc.envi.liste,family = "quasipoisson")
+    save(mod.ab.liste.qp,file="C:/git/epoc/output/result_models_by_id.RData")
+    
+    
+    
 
   # association residus des listes aux observateurs
     load("C:/git/epoc/output/result_models_by_id.RData")
@@ -613,46 +757,68 @@
     # indicateur 2 : residus par observateurs
       indic2 <- epoc.observateur[,c("Observateur","Nb_epoc","residus_mean","residus_sd","residus_median","residus_coeff_var")]
     
-# sauvegarde disque 4 : ----
-  # save.image(file = "C:/git/epoc/qualification_obs_initialisation4.RData")
-  load("C:/git/epoc/qualification_obs_initialisation4.RData")    
     
-# Zoom sur les indicateurs : interactions / cmt ils structurent le jeu de donnees   
-    # structuration du jeu de donnees par les flags
-      flag.plot <- ggplot(epoc.observateur) + 
-        geom_jitter(aes(x=flag_only_rare_low_div,
-                        y=flag_many_rare,color=Nb_epoc,
-                        size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
-                        alpha=Nb_epoc)) +
-        scale_color_gradient(low="blue",high="red") +
-        geom_smooth(aes(x=flag_only_rare_low_div,
-                        y=flag_many_rare, weight=Nb_epoc),
-                    method="lm") +
-        xlab("Nombre de flag : Only rare sp dans listes de moins de 4 espèces") +
-        ylab("Nombre de flag : Only rare sp ds listes de plus de 4 espèces") +
-        ggtitle("Structuration du jeu de données par l'indicateur des flags")
-      plot(flag.plot)
-      
+# Zoom sur les indicateurs : interactions / cmt ils structurent le jeu de donnees  ----- 
+    # structuration du jeu de donnees par les flags -----
+      # plot x : flag / y : flag -------
+        flag.plot <- ggplot(epoc.observateur,aes(x=part_flag_only_rare_low_div,
+                                                 y=part_flag_many_rare,color=Nb_epoc,
+                                                 size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
+                                                 alpha=Nb_epoc)) + 
+          geom_jitter() +
+          scale_color_gradient(low="blue",high="red") +
+          #scale_x_log10() + scale_y_log10()+
+          xlab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+          ylab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+          ggtitle("Structuration du jeu de données par l'indicateur des flags")
+        plot(flag.plot)
+        ggExtra::ggMarginal(flag.plot, type = "histogram")
         
-      ggExtra::ggMarginal(flag.plot, type = "histogram")
+        # 2eme plot des flags
+        flag.plot1 <- ggplot(epoc.observateur,aes(x=part_flag_only_rare_low_div,
+                                                 y=part_flag_scarce_communs,color=Nb_epoc,
+                                                 size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
+                                                 alpha=Nb_epoc)) + 
+          geom_jitter() +
+          scale_color_gradient(low="blue",high="red") +
+          #scale_x_log10() + scale_y_log10()+
+          xlab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+          ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+          ggtitle("Structuration du jeu de données par l'indicateur des flags")
+        plot(flag.plot1)
+        ggExtra::ggMarginal(flag.plot1, type = "histogram")
+        
+        #3eme plot des dlags
+        flag.plot2 <- ggplot(epoc.observateur,aes(x=part_flag_many_rare,
+                                                 y=part_flag_scarce_communs,color=Nb_epoc,
+                                                 size=Nb_epoc, # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
+                                                 alpha=Nb_epoc)) + 
+          geom_jitter() +
+          scale_color_gradient(low="blue",high="red") +
+          #scale_x_log10() + scale_y_log10()+
+          xlab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+          ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+          ggtitle("Structuration du jeu de données par l'indicateur des flags")
+        plot(flag.plot2)
+        ggExtra::ggMarginal(flag.plot2, type = "histogram")
+        
+      # plot (x : flag / y : nb_epoc) ----------
+        ggplot(epoc.observateur,aes(x = part_flag_many_rare,y=Nb_epoc)) +
+          geom_jitter() + ggtitle("Repartition du flag (0 communs, trop de rare) par observateurs") +
+          xlab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+          ylab("Nombre d'EPOC")
+        
+        ggplot(epoc.observateur,aes(x = part_flag_only_rare_low_div,y=Nb_epoc)) +
+          geom_jitter() + ggtitle("Repartition du flag (0 communs, trop de rare - faible diversité)\npar observateurs") +
+          xlab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+          ylab("Nombre d'EPOC")
+        
+        ggplot(epoc.observateur,aes(x = part_flag_many_rare,y=Nb_epoc)) +
+          geom_jitter() + ggtitle("Repartition du flag (moins de communs que l'attendu théorique)\npar observateurs") +
+          xlab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+          ylab("Nombre d'EPOC")
       
-      '
-      flag.plot <- ggplot(epoc.observateur) + 
-        geom_jitter(aes(x=flag_only_rare_low_div,
-                        y=flag_many_rare,color=Nb_epoc,
-                        size=1-part_epoc_least_1_communs,
-                        alpha=(1 -part_epoc_least_1_communs)*0.5)) + # modif : add des proportions (warn : (1 - proportion) * 100 better ?)
-        scale_color_gradient(low="green",high="red") +
-        geom_smooth(aes(x=flag_only_rare_low_div,
-                        y=flag_many_rare, weight=Nb_epoc),
-                    method="lm") +
-        xlab("Nombre de flag : Only rare sp dans listes de moins de 4 espèces") +
-        ylab("Nombre de flag : Only rare sp ds listes de plus de 4 espèces") +
-        ggtitle("Structuration du jeu de données par l indicateur des flags")
-      plot(flag.plot)
-      '
-      
-    # structuration du jeu de donnees par les residus
+    # structuration du jeu de donnees par les residus -----
       resi.plot <- ggplot(indic2) +
         geom_jitter(aes(x=residus_coeff_var
                         ,y=residus_mean,color=Nb_epoc,
@@ -691,7 +857,7 @@
         head(indic2[which(dif.indic2 == FALSE),])
     
     # table de correlation
-      cor.indic <- epoc.observateur[,c("residus_mean","residus_coeff_var","flag_many_rare","flag_only_rare_low_div")]
+      cor.indic <- epoc.observateur[,c("residus_mean","residus_coeff_var","flag_many_rare","flag_only_rare_low_div","flag_scarce_communs")]
       
       corrplot::corrplot(cor(cor.indic,method="spearman"),method="number") # 0 correlation entre les indicateurs
     
@@ -702,11 +868,37 @@ load("C:/git/epoc/qualification_obs_initialisation5.RData")
     
     
     
-    
-    
-    
-    
-    
+# Ajout de l'experience de l'observateur selon la region observée ----------
+# en attente d'un shp biomes  
+# idée: ajout d'une experience nuance par la region (contenant des especes auxquels l'observateur peut ne pas connaitre)
+  library(sf)
+  library(data.table)
+  # Pas d'information sur la region ds le jeu de donnees
+  # besoin d'importer les infos de regions a partir d'un shp
+      fra.adm.reg <- st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm1.shp")
+      epoc.envi.liste.sf <- st_as_sf(x = epoc.envi.liste,coords=c("Lon_WGS84","Lat_WGS84"),crs=4326)
+
+ 
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
 
 
 
@@ -722,3 +914,4 @@ load("C:/git/epoc/qualification_obs_initialisation5.RData")
 
 
 
+      ggplot() + geom_sf(data=fra.adm.reg) + geom_sf(data=epoc.envi.liste.sf)
