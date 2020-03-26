@@ -803,20 +803,20 @@
         ggExtra::ggMarginal(flag.plot2, type = "histogram")
         
       # plot (x : flag / y : nb_epoc) ----------
-        ggplot(epoc.observateur,aes(x = part_flag_many_rare,y=Nb_epoc)) +
+        ggplot(epoc.observateur,aes(x =Nb_epoc,y= part_flag_many_rare)) +
           geom_jitter() + ggtitle("Repartition du flag (0 communs, trop de rare) par observateurs") +
-          xlab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
-          ylab("Nombre d'EPOC")
+          ylab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+          xlab("Nombre d'EPOC")
         
-        ggplot(epoc.observateur,aes(x = part_flag_only_rare_low_div,y=Nb_epoc)) +
+        ggplot(epoc.observateur,aes(x = Nb_epoc,y= part_flag_only_rare_low_div)) +
           geom_jitter() + ggtitle("Repartition du flag (0 communs, trop de rare - faible diversité)\npar observateurs") +
-          xlab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
-          ylab("Nombre d'EPOC")
+          ylab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+          xlab("Nombre d'EPOC")
         
-        ggplot(epoc.observateur,aes(x = part_flag_many_rare,y=Nb_epoc)) +
+        ggplot(epoc.observateur,aes(x = Nb_epoc,y= part_flag_many_rare)) +
           geom_jitter() + ggtitle("Repartition du flag (moins de communs que l'attendu théorique)\npar observateurs") +
-          xlab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
-          ylab("Nombre d'EPOC")
+          ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+          xlab("Nombre d'EPOC")
       
     # structuration du jeu de donnees par les residus -----
       resi.plot <- ggplot(indic2) +
