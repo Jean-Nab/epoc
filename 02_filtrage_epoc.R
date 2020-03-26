@@ -293,7 +293,7 @@ setwd("C:/git/epoc/data")
         
         
 # separation du jeu de donnees en 2 tableaux (var env/localisation et var communautes d'oiseaux) ----
-  epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nombre","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
+  epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nom_latin","Nombre","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
   epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Jour","Mois","Annee","Jour_de_l_annee",
                                       "Pentade","Decade","numero_de_la_semaine","Horaire","Heure_debut","Heure_de_debut","Minute_de_debut","Heure_fin","Heure_de_fin",
                                       "Minute_de_fin","Liste_complete","Commentaire_de_la_liste","ID_Lieu_dit","Lieu_dit","Commune","Departement","Code_INSEE","Pays","Type_de_localisation",
@@ -306,7 +306,7 @@ setwd("C:/git/epoc/data")
   
   # homogeneisation
     # retrait des especes doublons dans les listes du dtf de communautes
-      epoc.oiso2 <- aggregate(Nombre ~ Ref + ID_liste + Observateur + Nom_espece + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
+      epoc.oiso2 <- aggregate(Nombre ~ Ref + ID_liste + Observateur + Nom_espece + Nom_latin + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
       epoc.oiso2 <- epoc.oiso2[order(epoc.oiso2$ID_liste),]
       epoc.oiso2$Nb_NA <- epoc.oiso2$Nombre - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
   
