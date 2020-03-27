@@ -610,17 +610,25 @@
       colnames(nb.epoc.obs) <- c("Observateur","Nb_epoc")
       list.obs.quali <- plyr::join(list.obs.quali,nb.epoc.obs,by="Observateur")
       
+  # ajout du metaflag --> activation d'au moins un flag par liste
+      list.obs.quali$flag_meta <- 0
+      list.obs.quali[list.obs.quali$flag_many_rare == 1,"flag_meta"] <- 1
+      list.obs.quali[list.obs.quali$flag_only_rare_low_div == 1,"flag_meta"] <- 1
+      list.obs.quali[list.obs.quali$flag_scarce_communs == 1,"flag_meta"] <- 1
+      
   # need de rassembler les infos par observateur
       aggr.comm <- aggregate(least_1_communs ~ Observateur,data=list.obs.quali,sum)
       aggr.flag.rare <- aggregate(flag_many_rare ~ Observateur,data=list.obs.quali,sum)
       aggr.flag.rare.low <- aggregate(flag_only_rare_low_div ~ Observateur,data=list.obs.quali,sum)
       aggr.flag.comm.scarc <- aggregate(flag_scarce_communs ~ Observateur,data=list.obs.quali,sum)
+      aggr.flag.meta <- aggregate(flag_meta ~ Observateur, data=list.obs.quali,sum)
 
       
       # join des dtfs
       aggr.all <- plyr::join(aggr.comm,aggr.flag.rare,by="Observateur")
       aggr.all <- plyr::join(aggr.all,aggr.flag.rare.low,by="Observateur")
       aggr.all <- plyr::join(aggr.all,aggr.flag.comm.scarc,by="Observateur")
+      aggr.all <- plyr::join(aggr.all,aggr.flag.meta,by="Observateur")
 
       
   # add des infos de qualites observateurs aux donnees faune-france
@@ -635,6 +643,8 @@
       epoc.observateur$part_flag_many_rare <- epoc.observateur$flag_many_rare / epoc.observateur$Nb_epoc
       epoc.observateur$part_flag_only_rare_low_div <- epoc.observateur$flag_only_rare_low_div / epoc.observateur$Nb_epoc
       epoc.observateur$part_flag_scarce_communs <- epoc.observateur$flag_scarce_communs / epoc.observateur$Nb_epoc
+      epoc.observateur$part_flag_meta <- epoc.observateur$flag_meta / epoc.observateur$Nb_epoc
+      
 
         
       
@@ -817,6 +827,12 @@
           geom_jitter() + ggtitle("Repartition du flag (moins de communs que l'attendu théorique)\npar observateurs") +
           ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
           xlab("Nombre d'EPOC")
+        
+        ggplot(epoc.observateur,aes(x = Nb_epoc,y= part_flag_meta)) +
+          geom_jitter() + ggtitle("Repartition du flag meta (au moins un flag activé)") +
+          ylab("Proportion de listes flaggées") +
+          xlab("Nombre d'EPOC")
+        
       
     # structuration du jeu de donnees par les residus -----
       resi.plot <- ggplot(indic2) +
