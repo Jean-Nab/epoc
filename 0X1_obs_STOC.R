@@ -85,7 +85,7 @@
         geom_sf(data=epoc.pf_sf1,aes(color=intersect_pass))
       
       
-  # globalisation de l'intersect (condense l'information sur 3 colonne en une) -----
+  # globalisation de l'intersect (condense l'information de 3 colonnes en une) -----
     epoc.pf_sf1$intersect <- 0
     epoc.pf_sf1[epoc.pf_sf1$intersect_breed == "out","intersect"] <- "breeding_out"
     epoc.pf_sf1[epoc.pf_sf1$intersect_pass == "out","intersect"] <- "passage_out"
