@@ -55,25 +55,25 @@
                        ,x=obs.loc.gps$Nom_latin)
       
       # selection des observations contennant uniquement des observations des genres de sp.latin
-        obs.loc.gps <- obs.loc.gps[sp.latin,]
+        obs.loc.gps.genre <- obs.loc.gps[sp.latin,]
   
   # regroupement des observations par ID de liste
-    id.loc.gps1 <- aggregate(lon_observateur ~ ID_liste,data=obs.loc.gps, mean) # longitude
-    id.loc.gps2 <- aggregate(lat_observateur ~ ID_liste,data=obs.loc.gps, mean) # latitude
-    id.loc.gps3 <- aggregate(precision_m ~ ID_liste,data=obs.loc.gps, mean) # latitude
+    id.loc.gps.genre1 <- aggregate(lon_observateur ~ ID_liste,data=obs.loc.gps.genre, mean) # longitude
+    id.loc.gps.genre2 <- aggregate(lat_observateur ~ ID_liste,data=obs.loc.gps.genre, mean) # latitude
+    id.loc.gps.genre3 <- aggregate(precision_m ~ ID_liste,data=obs.loc.gps.genre, mean) # latitude
   
     
     # DTF de localisation de l'observateur GEOLOCALISE (d'apres info de faune-france)
-    id.loc.gps <- join(id.loc.gps1,id.loc.gps2,by="ID_liste")  
-    id.loc.gps <- join(id.loc.gps,id.loc.gps3, by="ID_liste")  
+    id.loc.gps.genre <- join(id.loc.gps1,id.loc.gps.genre2,by="ID_liste")  
+    id.loc.gps.genre <- join(id.loc.gps,id.loc.gps.genre3, by="ID_liste")  
     
   # Acquisition des coordonnees du barycentre des listes ----
-    id.list <- unique(obs.loc.gps$ID_liste) # vecteur des listes
+    id.list <- unique(obs.loc.gps.genre$ID_liste) # vecteur des listes
     list.centr <- data.frame()
     
     i <- 1
     while(i <= length(id.list)){
-      dtf.tmp <- obs.loc.gps[obs.loc.gps$ID_liste == id.list[i],]
+      dtf.tmp <- obs.loc.gps.genre[obs.loc.gps$ID_liste == id.list[i],]
       # calcul des coordonnees du centroid de la liste i
       centr_lon <- sum(dtf.tmp$Lon_WGS84)/nrow(dtf.tmp)
       centr_lat <- sum(dtf.tmp$Lat_WGS84)/nrow(dtf.tmp)
@@ -90,19 +90,19 @@
     colnames(list.centr) <- c("ID_liste","lon_centroid","lat_centroid")
 
   # conversion des deux dtf (id.loc.gps / list.centr) en objets spatiaux -----
-    id.loc.gps.sf <- st_as_sf(id.loc.gps,coords = c("lon_observateur","lat_observateur"),crs=4326)
+    id.loc.gps.genre.sf <- st_as_sf(id.loc.gps.genre,coords = c("lon_observateur","lat_observateur"),crs=4326)
     list.centr.sf <- st_as_sf(list.centr,coords = c("lon_centroid","lat_centroid"),crs=4326)
   
     # conversion en coordonnees planaires (lambert 93)
-      id.loc.gps.sf <- st_transform(id.loc.gps.sf,crs=2154)
+      id.loc.gps.genre.sf <- st_transform(id.loc.gps.genre.sf,crs=2154)
       list.centr.sf <- st_transform(list.centr.sf,crs=2154)
       
     # order par id_liste
-      id.loc.gps.sf <- id.loc.gps.sf[order(id.loc.gps.sf$ID_liste),]
+      id.loc.gps.genre.sf <- id.loc.gps.genre.sf[order(id.loc.gps.genre.sf$ID_liste),]
       list.centr.sf <- list.centr.sf[order(list.centr.sf$ID_liste),]
       
     # calcul de la distance entre les points
-      j <- st_distance(id.loc.gps.sf,list.centr.sf,by_element = TRUE)
+      j <- st_distance(id.loc.gps.genre.sf,list.centr.sf,by_element = TRUE)
       
       summary(j)
       
@@ -110,7 +110,7 @@
       j1 <- as.vector(j) ; summary(j1)
       which(j1 >= 10000) # liste w/ ecart centroid-loc_gps de plus de 10km
       
-      id.10km <- id.loc.gps.sf[which(j1 >= 10000),c("ID_liste","precision_m")]
+      id.10km <- id.loc.gps.genre.sf[which(j1 >= 10000),c("ID_liste","precision_m")]
       
     
   
@@ -120,7 +120,7 @@
   
 ggplot() +
   geom_sf(data=fra.adm) +
-  geom_sf(data=id.loc.gps.sf,aes(color="red")) +
+  geom_sf(data=id.loc.gps.genre.sf,aes(color="red")) +
   geom_sf(data=list.centr.sf,alpha=0.15)
   
   
@@ -129,9 +129,38 @@ ggplot() +
     id.list.prbl <- id.10km[which(id.10km$precision_m <= 500),]
   # observation des listes problematiques
     obs.list.prbl <- obs.loc.gps[which(obs.loc.gps$ID_liste %in% id.list.prbl$ID_liste ==TRUE),]
-    # meme observateur, mais peu de points <=> genre priss en compte ?
     
+    # formation des objets spatiaux
+    list.centr.prbl.sf <- list.centr.sf[which(list.centr.sf$ID_liste %in% id.list.prbl$ID_liste ==TRUE),]
+    obs.list.prbl.sf <- st_transform(st_as_sf(obs.list.prbl,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326),crs=2154)
+    
+      # meme observateur, mais peu de points <=> genre pris en compte ?  (didier perrocheau)
+    
+  # prccessus par listes [PROCEDER A LA MAIN]
+    id.prbl <- unique(obs.list.prbl$ID_liste)
+   
+    
+    i <- 1
+    while(i <= length(id.prbl)){
+      
+      obs.list.prbl.sf.tmp <- obs.list.prbl.sf[obs.list.prbl.sf$ID_liste == id.prbl[i],]
+      list.centr.prbl.sf.tmp <- list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == id.prbl[i],]
+      
+      dist.prbl.tmp <- st_distance(x = obs.list.prbl.sf.tmp,
+                                   y = list.centr.prbl.sf.tmp)
+
+      cat(i," /",length(id.prbl),"\n")
+      i <- i+1
+    }
+    
+  # plot points + centroid (col differentes) + st_distance point (eloignement; wrning crs)
+    obs.list.prbl.sf <- st_transform(st_as_sf(obs.list.prbl,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326),crs=2154)
   
+    ggplot()+
+      geom_sf(data=obs.list.prbl.sf[obs.list.prbl.sf$ID_liste == 398389,],aes(color="blue")) +
+      geom_sf(data=list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == 398389,],aes(color="red"))
+    
+    # resultats anormaux pb autre part
   
   
   
