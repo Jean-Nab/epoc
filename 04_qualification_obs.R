@@ -823,7 +823,7 @@
           ylab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
           xlab("Nombre d'EPOC")
         
-        ggplot(epoc.observateur,aes(x = Nb_epoc,y= part_flag_many_rare)) +
+        ggplot(epoc.observateur,aes(x = Nb_epoc,y= part_flag_scarce_communs)) +
           geom_jitter() + ggtitle("Repartition du flag (moins de communs que l'attendu théorique)\npar observateurs") +
           ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
           xlab("Nombre d'EPOC")
@@ -833,6 +833,25 @@
           ylab("Proportion de listes flaggées") +
           xlab("Nombre d'EPOC")
         
+      #  plot (x : flag / y : nb_epoc)  / retrait champions plus amelioration visu ------
+        # initialisation : detection champion (recup nom champ puis rmv ds epoc.observateur en sauvant les maximum par part_flags)
+          name.champ <- unique(as.character(champ.oiso$Observateur.x)) # recup' des noms des champions
+          detect.champ <-epoc.observateur$Observateur %in% name.champ # detection des lignes avec les champions
+          
+          # recup' des valeurs maximals par flags
+            max.champ.flag.many.rare <- max(epoc.observateur[which(detect.champ == TRUE),"part_flag_many_rare"])
+            max.champ.flag.only.rare <- max(epoc.observateur[which(detect.champ == TRUE),"part_flag_only_rare_low_div"])
+            max.champ.flag.scarce.communs <- max(epoc.observateur[which(detect.champ == TRUE),"part_flag_scarce_communs"])
+            
+          epoc.observateur.no.champ <- epoc.observateur[which(detect.champ == FALSE),] # dtf epoc.observateur sans champions
+          
+        # plot graphs
+          ggplot(epoc.observateur.no.champ,aes(x =Nb_epoc,y= part_flag_many_rare)) +
+            geom_jitter() + ggtitle("Repartition du flag (0 communs, trop de rare) par observateurs\n(Sans champions)") +
+            geom_line(aes(x=c(min(epoc.observateur.no.champ$Nb_epoc),max(epoc.observateur.no.champ$Nb_epoc)),y=max.champ.flag.many.rare))
+            ylab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+            xlab("Nombre d'EPOC")
+          
       
     # structuration du jeu de donnees par les residus -----
       resi.plot <- ggplot(indic2) +
