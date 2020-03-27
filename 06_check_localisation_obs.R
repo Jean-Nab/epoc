@@ -106,6 +106,12 @@
       
       summary(j)
       
+    # detecction des valeurs de distance anormales
+      j1 <- as.vector(j) ; summary(j1)
+      which(j1 >= 10000) # liste w/ ecart centroid-loc_gps de plus de 10km
+      
+      id.10km <- id.loc.gps.sf[which(j1 >= 10000),c("ID_liste","precision_m")]
+      
     
   
 # cartographie ----
@@ -118,7 +124,13 @@ ggplot() +
   geom_sf(data=list.centr.sf,alpha=0.15)
   
   
-  
+# Zoom sur listes problematique
+  # detecction des listes problematiques (listes dont centroide/gps precis ont un ecart de 10km en ayant une precision_m elevee)
+    id.list.prbl <- id.10km[which(id.10km$precision_m <= 500),]
+  # observation des listes problematiques
+    obs.list.prbl <- obs.loc.gps[which(obs.loc.gps$ID_liste %in% id.list.prbl$ID_liste ==TRUE),]
+    # meme observateur, mais peu de points <=> genre priss en compte ?
+    
   
   
   
