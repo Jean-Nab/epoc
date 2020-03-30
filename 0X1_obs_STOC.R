@@ -68,12 +68,6 @@
   epoc.pe_sf <- st_as_sf(epoc.pe,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326)
   epoc.pipf_sf <- st_as_sf(epoc.pipf,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326)
   
-  # cartographie
-    ggplot()+
-      geom_sf(data=Aire_Pouillot_fitis, aes(fill = factor(SEASONAL)), alpha = 0.4) +
-      geom_sf(data=epoc.pf_sf)
-  
-  
 # detection des points en dehors du shape ----
   # conversion planaire
     air_Pf1 <- st_transform(air_Pf,crs=2154)
@@ -91,67 +85,67 @@
 
   # intersects ----
     # intersect global ----
-      int.all.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1,sparse = FALSE)
+      int.all.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1,sparse = FALSE,dist=50000)
       int.all.pf1 <- as.integer(apply(int.all.pf,1,any))
       epoc.pf_sf1$intersect_all <- int.all.pf1
       
-      int.all.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1,sparse = FALSE)
+      int.all.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1,sparse = FALSE,dist=50000)
       int.all.gb1 <- as.integer(apply(int.all.gb,1,any))
       epoc.gb_sf1$intersect_all <- int.all.gb1
       
-      int.all.mh <- st_intersects(x=epoc.mh_sf1,y=air_Mh1,sparse = FALSE)
+      int.all.mh <- st_intersects(x=epoc.mh_sf1,y=air_Mh1,sparse = FALSE,dist=50000)
       int.all.mh1 <- as.integer(apply(int.all.mh,1,any))
       epoc.mh_sf1$intersect_all <- int.all.mh1
       
-      int.all.pe <- st_intersects(x=epoc.pe_sf1,y=air_Pe1,sparse = FALSE)
+      int.all.pe <- st_intersects(x=epoc.pe_sf1,y=air_Pe1,sparse = FALSE,dist=50000)
       int.all.pe1 <- as.integer(apply(int.all.pe,1,any))
       epoc.pe_sf1$intersect_all <- int.all.pe1
       
-      int.all.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1,sparse = FALSE)
+      int.all.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1,sparse = FALSE,dist=50000)
       int.all.pipf1 <- as.integer(apply(int.all.pipf,1,any))
       epoc.pipf_sf1$intersect_all <- int.all.pipf1
 
     # intersect breeding -----
-      int.breed.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1[air_Pf1$SEASONAL == 2,],sparse = FALSE)
+      int.breed.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1[air_Pf1$SEASONAL == 2,],sparse = FALSE,dist=50000)
       int.breed.pf1 <- as.integer(apply(int.breed.pf,1,any))
       epoc.pf_sf1$intersect_breed <- int.breed.pf1
       
-      int.breed.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1[air_Gb1$SEASONAL == 2,],sparse = FALSE)
+      int.breed.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1[air_Gb1$SEASONAL == 2,],sparse = FALSE,dist=50000)
       int.breed.gb1 <- as.integer(apply(int.breed.gb,1,any))
       epoc.gb_sf1$intersect_breed <- int.breed.gb1
       
-      int.breed.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 2,],sparse = FALSE)
+      int.breed.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 2,],sparse = FALSE,dist=50000)
       int.breed.pipf1 <- as.integer(apply(int.breed.pipf,1,any))
       epoc.pipf_sf1$intersect_breed <- int.breed.pipf1
 
     # intersect passage -----
-      int.pass.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1[air_Pf1$SEASONAL == 4,],sparse = FALSE)
+      int.pass.pf <- st_intersects(x=epoc.pf_sf1,y=air_Pf1[air_Pf1$SEASONAL == 4,],sparse = FALSE,dist=50000)
       int.pass.pf1 <- as.integer(apply(int.pass.pf,1,any))
       epoc.pf_sf1$intersect_pass <- int.pass.pf1
       
-      int.pass.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1[air_Gb1$SEASONAL == 4,],sparse = FALSE)
+      int.pass.gb <- st_intersects(x=epoc.gb_sf1,y=air_Gb1[air_Gb1$SEASONAL == 4,],sparse = FALSE,dist=50000)
       int.pass.gb1 <- as.integer(apply(int.pass.gb,1,any))
       epoc.gb_sf1$intersect_pass <- int.pass.gb1
       
-      int.pass.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 4,],sparse = FALSE)
+      int.pass.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 4,],sparse = FALSE,dist=50000)
       int.pass.pipf1 <- as.integer(apply(int.pass.pipf,1,any))
       epoc.pipf_sf1$intersect_pass <- int.pass.pipf1
       
     # intersect non-breeding season -----
-      int.nonbd.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 3,],sparse = FALSE)
+      int.nonbd.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 3,],sparse = FALSE,dist=50000)
       int.nonbd.pipf1 <- as.integer(apply(int.nonbd.pipf,1,any))
       epoc.pipf_sf1$intersect_non_breeding <- int.nonbd.pipf1
       
     # intersect resident -----
-      int.res.mh <- st_intersects(x=epoc.mh_sf1,y=air_Mh1[air_Mh1$SEASONAL == 1,],sparse = FALSE)
+      int.res.mh <- st_intersects(x=epoc.mh_sf1,y=air_Mh1[air_Mh1$SEASONAL == 1,],sparse = FALSE,dist=50000)
       int.res.mh1 <- as.integer(apply(int.res.mh,1,any))
       epoc.mh_sf1$intersect_resident <- int.res.mh1
       
-      int.res.pe <- st_intersects(x=epoc.pe_sf1,y=air_Pe1[air_Pe1$SEASONAL == 1,],sparse = FALSE)
+      int.res.pe <- st_intersects(x=epoc.pe_sf1,y=air_Pe1[air_Pe1$SEASONAL == 1,],sparse = FALSE,dist=50000)
       int.res.pe1 <- as.integer(apply(int.res.pe,1,any))
       epoc.pe_sf1$intersect_resident <- int.res.pe1
       
-      int.res.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 1,],sparse = FALSE)
+      int.res.pipf <- st_intersects(x=epoc.pipf_sf1,y=air_Pipf1[air_Pipf1$SEASONAL == 1,],sparse = FALSE,dist=50000)
       int.res.pipf1 <- as.integer(apply(int.res.pipf,1,any))
       epoc.pipf_sf1$intersect_resident <- int.res.pipf1
 
