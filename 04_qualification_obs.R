@@ -6,6 +6,7 @@
   library(mgcv)
   library(MASS)
   library(ggExtra)
+  library(data.table)
   
   
   
@@ -594,7 +595,30 @@
             id.champ.prob <-  champ.prob$ID_liste %in%  id.emp_th
           
             champ.prob[which(id.champ.prob==TRUE),"flag_scarce_communs"] <- 1
-          
+    # distribution flag 1st species detected -----
+    # Idee : travailler sur les listes -> detecter la 1ere especes observe / cf liste de categorie de jeremy
+      # import des categories de jeremy
+        cate.esp <- read.csv(file = "C:/git/epoc/data/listes_especes_all_epoc_JD.csv",header=T,sep=";",dec=",",encoding = "UTF-8")
+        cate.esp2 <- cate.esp[,c("Nom_espece","Decision")]    
+        
+      # join des categories sur le dtf regroupant les observations d'oiseaux (epoc.oiso)      
+        epoc.oiso.cate <- plyr::join(epoc.oiso,cate.esp2,by="Nom_espece")    
+            
+        # ajout d'increments par liste --> detection de la premiere entree d'observation par liste
+          epoc.oiso.cate_dt <- data.table(epoc.oiso.cate)
+          epoc.oiso.cate_dt <- epoc.oiso.cate_dt[, group_increment := 1:.N, by = "ID_liste"]
+          epoc.oiso.cate <- as.data.frame(epoc.oiso.cate_dt)
+            
+      # selection de la 1ere observation de chaque liste
+        first.obs <- which(epoc.oiso.cate$group_increment == 1)
+        list.oiso.cate <- epoc.oiso.cate[first.obs,c("ID_liste","Observateur","Nom_espece","Decision","group_increment")]    
+            
+        table(list.oiso.cate$Decision)    
+            
+            
+            
+            
+            
           
           
 # check vis-a-vis des donnees faune-france ------
