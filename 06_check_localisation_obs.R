@@ -42,7 +42,7 @@
 # Idee : acquerir donnes gps precise + donnees des barycentres pour les comparer
 
   # join des dtfs (+ selection des variables interressantes) ----
-    obs.loc <- epoc.envi.obs[,c("Ref","ID_liste","Observateur","Lon_WGS84","Lat_WGS84","Mention_EPOC","geolocalise")]
+    obs.loc <- epoc.envi.obs[,c("Ref","ID_liste","Observateur","Lon_WGS84","Lat_WGS84", "X_Lambert93_m","Y_Lambert93_m","Mention_EPOC","geolocalise")]
     obs.loc <- join(obs.loc,check.loc,by="Ref")
     
     # selection des donnees bien geoloc
@@ -60,23 +60,26 @@
   # regroupement des observations par ID de liste
     id.loc.gps.genre1 <- aggregate(lon_observateur ~ ID_liste,data=obs.loc.gps.genre, mean) # longitude
     id.loc.gps.genre2 <- aggregate(lat_observateur ~ ID_liste,data=obs.loc.gps.genre, mean) # latitude
-    id.loc.gps.genre3 <- aggregate(precision_m ~ ID_liste,data=obs.loc.gps.genre, mean) # latitude
+    id.loc.gps.genre3 <- aggregate(precision_m ~ ID_liste,data=obs.loc.gps.genre, mean) # la precision
   
     
     # DTF de localisation de l'observateur GEOLOCALISE (d'apres info de faune-france)
-    id.loc.gps.genre <- join(id.loc.gps1,id.loc.gps.genre2,by="ID_liste")  
-    id.loc.gps.genre <- join(id.loc.gps,id.loc.gps.genre3, by="ID_liste")  
+    id.loc.gps.genre <- join(id.loc.gps.genre1,id.loc.gps.genre2,by="ID_liste")  
+    id.loc.gps.genre <- join(id.loc.gps.genre,id.loc.gps.genre3, by="ID_liste")  
     
-  # Acquisition des coordonnees du barycentre des listes ----
+  # Acquisition des coordonnees du barycentre des listes version 1 ----
+    obs.loc.gps.genre$precision_invert <- 1/(obs.loc.gps.genre$precision_m +0.0001) # ajout de 0.0001 pour les listes ou la precision est de 0.000m
+    
     id.list <- unique(obs.loc.gps.genre$ID_liste) # vecteur des listes
     list.centr <- data.frame()
     
     i <- 1
     while(i <= length(id.list)){
-      dtf.tmp <- obs.loc.gps.genre[obs.loc.gps$ID_liste == id.list[i],]
+      dtf.tmp <- obs.loc.gps.genre[obs.loc.gps.genre$ID_liste == id.list[i],]
       # calcul des coordonnees du centroid de la liste i
-      centr_lon <- sum(dtf.tmp$Lon_WGS84)/nrow(dtf.tmp)
-      centr_lat <- sum(dtf.tmp$Lat_WGS84)/nrow(dtf.tmp)
+      
+      centr_lon <- weighted.mean(x=dtf.tmp$X_Lambert93_m,w=dtf.tmp$precision_invert)
+      centr_lat <- weighted.mean(x=dtf.tmp$Y_Lambert93_m,w=dtf.tmp$precision_invert)
       
       list.centr.tmp <- matrix(c(id.list[i],centr_lon,centr_lat),nrow=1,ncol=3,byrow=T)
       
@@ -88,14 +91,57 @@
     }  
     
     colnames(list.centr) <- c("ID_liste","lon_centroid","lat_centroid")
+    
+
+  # Acquisition des coordonnees du barycentre des listes version 2 ----
+    obs.loc.gps.genre.sf <- st_as_sf(obs.loc.gps.genre,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326) # formation d'un sf
+    obs.loc.gps.genre.sf <- st_transform(obs.loc.gps.genre.sf,crs=2154) # conversion wgs84 -> lambert93 (donnees planaires)
+    
+    # test pour l'iteration
+      library(concaveman)
+    
+      id.list <- unique(obs.loc.gps.genre.sf$ID_liste) # vecteur des listes
+      dtf.tmp <- obs.loc.gps.genre.sf[obs.loc.gps.genre$ID_liste == id.list[1],]
+      
+      dtf.pol <- concaveman(dtf.tmp)
+      
+      dtf.centr <- st_centroid(dtf.pol)
+
+      ggplot() + geom_sf(data=dtf.tmp,colour="red") + geom_sf(data=dtf.pol,colour="blue")  + geom_sf(data=dtf.centr,colour="green") + geom_sf(data=centr_math, colour="purple")
+      load("C:/git/epoc/06_check_localisation_centroide.RData")
+    
+    # boucle -----
+      id.list <- unique(obs.loc.gps.genre.sf$ID_liste) # vecteur des listes
+      
+      dtf.tmp <- obs.loc.gps.genre.sf[obs.loc.gps.genre$ID_liste == id.list[1],]
+      dtf.pol <- concaveman(dtf.tmp) # formation du polygone
+      dtf.centr <- st_centroid(dtf.pol) # calcul de la position du centroid
+      dtf.centr$ID_liste <- id.list[i]
+      
+      i <- 2
+      while(i <= length(id.list)){
+        dtf.tmp <- obs.loc.gps.genre.sf[obs.loc.gps.genre$ID_liste == id.list[i],] # recup' des points
+        
+        dtf.pol <- concaveman(dtf.tmp) # formation du polygone
+        
+        dtf.centr.tmp <- st_centroid(dtf.pol) # calcul de la position du centroid
+        
+        dtf.centr.tmp$ID_liste <- id.list[i]
+        
+        dtf.centr <- rbind(dtf.centr,dtf.centr.tmp)
+        
+        cat(i," /",length(id.list),"\n")
+        i <- i+1
+      }
+      
 
   # conversion des deux dtf (id.loc.gps / list.centr) en objets spatiaux -----
     id.loc.gps.genre.sf <- st_as_sf(id.loc.gps.genre,coords = c("lon_observateur","lat_observateur"),crs=4326)
-    list.centr.sf <- st_as_sf(list.centr,coords = c("lon_centroid","lat_centroid"),crs=4326)
+    list.centr.sf <- st_as_sf(list.centr,coords = c("lon_centroid","lat_centroid"),crs=2154)
   
     # conversion en coordonnees planaires (lambert 93)
       id.loc.gps.genre.sf <- st_transform(id.loc.gps.genre.sf,crs=2154)
-      list.centr.sf <- st_transform(list.centr.sf,crs=2154)
+
       
     # order par id_liste
       id.loc.gps.genre.sf <- id.loc.gps.genre.sf[order(id.loc.gps.genre.sf$ID_liste),]
@@ -157,8 +203,8 @@ ggplot() +
     obs.list.prbl.sf <- st_transform(st_as_sf(obs.list.prbl,coords = c("Lon_WGS84","Lat_WGS84"),crs=4326),crs=2154)
   
     ggplot()+
-      geom_sf(data=obs.list.prbl.sf[obs.list.prbl.sf$ID_liste == 398389,],aes(color="blue")) +
-      geom_sf(data=list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == 398389,],aes(color="red"))
+      geom_sf(data=obs.list.prbl.sf[obs.list.prbl.sf$ID_liste == 398389,],colour="blue") +
+      geom_sf(data=list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == 398389,],colour="red")
     
     # resultats anormaux pb autre part
   
