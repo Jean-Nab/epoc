@@ -10,6 +10,7 @@
   
 # upload des data
   # Formation du raster CLC couvrant uniquement la france ----
+    # NEED DE CHANGER LE RASTER D'ORIGINIE PRENDRE CELUI AVEC LEGENDES MODIFIES
     land <- raster("C:/git/epoc/data/clc2018_clc2018_v2018_20_raster100m/CLC2018_CLC2018_V2018_20.tif")
     france <- st_read(dsn = "C:/git/epoc/data/france_contour_tampon.shp")
     
