@@ -56,6 +56,10 @@
       
       # selection des observations contennant uniquement des observations des genres de sp.latin
         obs.loc.gps.genre <- obs.loc.gps[sp.latin,]
+        
+      # selection : retrait des observations a plus de 5 km de distance
+        obs.loc.gps.genre <- obs.loc.gps.genre[which(obs.loc.gps.genre$distance_observation <= 5000),]
+        
   
   # regroupement des observations par ID de liste
     id.loc.gps.genre1 <- aggregate(lon_observateur ~ ID_liste,data=obs.loc.gps.genre, mean) # longitude
@@ -69,7 +73,16 @@
     
   # Acquisition des coordonnees du barycentre des listes----
     obs.loc.gps.genre$precision_invert <- 1/(obs.loc.gps.genre$precision_m +0.0001) # ajout de 0.0001 pour les listes ou la precision est de 0.000m
+  
+  # ajout d'un id par liste
+    '
+    library(data.table)
+    test <- obs.loc.gps.genre
+    test.dt <- data.table(test)
+    test.dt2 <- test.dt[, group_increment := 1:.N, by = "ID_liste"]
+    '
     
+  
     id.list <- unique(obs.loc.gps.genre$ID_liste) # vecteur des listes
     list.centr <- data.frame()
     
@@ -112,6 +125,7 @@
     # detecction des valeurs de distance anormales
       j1 <- as.vector(j) ; summary(j1)
       which(j1 >= 10000) # liste w/ ecart centroid-loc_gps de plus de 10km
+      j2 <- j1[-which(j1 >= 10000)] ; summary(j2)
       
       id.10km <- id.loc.gps.genre.sf[which(j1 >= 10000),c("ID_liste","precision_m")]
       
@@ -161,7 +175,8 @@ ggplot() +
   
     ggplot()+
       geom_sf(data=obs.list.prbl.sf[obs.list.prbl.sf$ID_liste == 398389,],colour="blue") +
-      geom_sf(data=list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == 398389,],colour="red")
+      geom_sf(data=list.centr.prbl.sf[list.centr.prbl.sf$ID_liste == 398389,],colour="red") +
+      geom_sf(data=id.loc.gps.genre.sf[id.loc.gps.genre.sf$ID_liste == 398389,],colour="purple")
     
     # resultats anormaux pb autre part
   
