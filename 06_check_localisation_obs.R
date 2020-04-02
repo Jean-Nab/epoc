@@ -58,7 +58,7 @@
         obs.loc.gps.genre <- obs.loc.gps[sp.latin,]
         
       # selection : retrait des observations a plus de 5 km de distance
-        obs.loc.gps.genre <- obs.loc.gps.genre[which(obs.loc.gps.genre$distance_observation <= 5000),]
+        obs.loc.gps.genre <- obs.loc.gps.genre[which(obs.loc.gps.genre$distance_observation <= 500),]
         
   
   # regroupement des observations par ID de liste
@@ -73,15 +73,6 @@
     
   # Acquisition des coordonnees du barycentre des listes----
     obs.loc.gps.genre$precision_invert <- 1/(obs.loc.gps.genre$precision_m +0.0001) # ajout de 0.0001 pour les listes ou la precision est de 0.000m
-  
-  # ajout d'un id par liste
-    '
-    library(data.table)
-    test <- obs.loc.gps.genre
-    test.dt <- data.table(test)
-    test.dt2 <- test.dt[, group_increment := 1:.N, by = "ID_liste"]
-    '
-    
   
     id.list <- unique(obs.loc.gps.genre$ID_liste) # vecteur des listes
     list.centr <- data.frame()
