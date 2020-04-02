@@ -73,8 +73,8 @@ i <- 1
 while(i <= length(id.list)){
   dtf.tmp <- epoc.envi.observ[epoc.envi.observ$ID_liste == id.list[i],]
   # calcul des coordonnees du centroid de la liste i
-  centr_lon <- sum(dtf.tmp$Lon_WGS84)/nrow(dtf.tmp)
-  centr_lat <- sum(dtf.tmp$Lat_WGS84)/nrow(dtf.tmp)
+  centr_lon <- sum(dtf.tmp$X_Lambert93_m)/nrow(dtf.tmp)
+  centr_lat <- sum(dtf.tmp$Y_Lambert93_m)/nrow(dtf.tmp)
   
   list.centr.tmp <- matrix(c(id.list[i],centr_lon,centr_lat),nrow=1,ncol=3,byrow=T)
   
@@ -90,7 +90,7 @@ while(i <= length(id.list)){
   loc.list <- plyr::join(epoc.envi.liste,list.centr,by="ID_liste")
   
 # conversion sur le crs de la couche corine land cover
-  loc.list <- st_as_sf(loc.list,coords=c("centroide_lon","centroide_lat"), crs=4326) # formation du sf selon les coord wgs84
+  loc.list <- st_as_sf(loc.list,coords=c("centroide_lon","centroide_lat"), crs=2154) # formation du sf selon les coord lambert93
   loc.list <- st_transform(loc.list,crs=crs(clc)) # conversion sur le crs du raster corinne land cov
   fra.adm <- st_transform(fra.adm,crs=crs(clc)) # polygones ou les points vont etre selectionne aleatoirement
 
@@ -106,11 +106,13 @@ while(i <= length(id.list)){
     
 # Extraction des habitats ----
       start_time <- Sys.time()
+      beginCluster()
       clc.buf <- raster::extract(clc,loc.list.buf
                          ,along=TRUE
                          ,method="simple"
                          ,df=TRUE
                          ,small=TRUE)
+      endCluster()
       
       beginCluster()
       clc.rand.buf <- raster::extract(clc,rand.point.buf
