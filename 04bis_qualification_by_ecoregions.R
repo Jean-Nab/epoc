@@ -3,6 +3,7 @@
 # packages
   library(sf)
   library(ggplot2)
+  library(tidyverse)
 
 
 # upload des data ----
@@ -16,7 +17,7 @@
   epoc.envi.obs <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),header=T,sep="\t", dec=","
                               , encoding="UTF-8",quote="")
   
-  eco.reg <- st_read("C:/git/epoc/data/france_ecoregions1.shp")
+  eco.reg <- st_read("C:/git/epoc/data/france_ecoregions_v2.shp")
   
   
   load("C:/git/epoc/04bis_initialisation.RData")
@@ -114,8 +115,250 @@
         colnames(resul) <- c("nom_ecoregion","nb_listes","nb_observateurs","nb_observations")
       
   # ANALYSE ----
-    # formation du dtf de synthese (regroupant toutes les informations sur les ecoregions)
-      
+    # Formation des courbes théoriques (proba especes communes / part especes communes) a partir de l'ensemble des observations ----
+        
+      # recuperation du nombre total d'observations faites par espece
+        obs.esp <- plyr::count(epoc.oiso$Nom_espece)
+        colnames(obs.esp) <- c("Nom_espece","count")
+        obs.esp <- obs.esp[order(obs.esp$count,decreasing = T),] # Nombre d'observations par espece selon les listes
+        obs.esp$prob <- obs.esp$count/nrow(epoc.envi.liste) # calcul de la part des especes dans les listes
+        
+        # calcul proba de detection d'au moins une espece communes a partir des donnees des "champions" ----
+        # formation du dtf de nombre d'especes trouver sur les listes "champions" ----
+          # qualification d'un champion
+          champ <- aggregate(Liste_complete ~ Observateur,data=epoc.envi.liste, FUN=sum)
+          champ$part_totale <- champ$Liste_complete / sum(champ$Liste_complete)*100
+          
+          champ.id <- champ[champ$part_totale > 2,] # champion = observateur ayant fait au moins plus de 2% des listes d'EPOC
+          
+          champ.id1 <- merge(x = epoc.envi.liste,y=champ.id,by="Observateur")
+          # verif
+          length(unique(champ.id1$ID_liste)) == sum(champ.id$Liste_complete) # TRUE
+        
+        
+          # selection de toutes les observations faites dans les listes de champions 
+          #==> permet de compter le nb de fois qu'une espece a etait observe par les champions
+          champ.obs <- merge(x = champ.id1,y=epoc.oiso,by="ID_liste")
+          # verif
+          length(unique(champ.id1$ID_liste)) == length(unique(champ.obs$ID_liste)) # TRUE
+          
+          # decompte du nb d'espece dans les listes champions
+          # formation du dtf regroupant les especes detectee + le nombre d'occurrence d'observation
+          champ.oiso <- aggregate(Nombre ~ ID_liste + Observateur.x + Nom_espece,data=champ.obs,FUN=sum)
+          champ.esp <- plyr::count(champ.oiso$Nom_espece)
+          
+          colnames(champ.esp) <- c("Nom_espece","count")
+          champ.esp$prob <- champ.esp$count/nrow(champ.id1)
+        
+        # tirage avec poids sans remise -----
+          tir.1esp <- c();       tir.2esp <- c()
+          tir.3esp <- c();       tir.4esp <- c()
+          tir.5esp <- c();       tir.6esp <- c()
+          tir.7esp <- c();       tir.8esp <- c()
+          tir.9esp <- c();       tir.10esp <- c()
+          tir.11esp <- c();       tir.12esp <- c()
+          tir.13esp <- c();       tir.14esp <- c()
+          tir.15esp <- c();       tir.16esp <- c()
+          tir.17esp <- c();       tir.18esp <- c()
+          tir.19esp <- c();       tir.20esp <- c()
+          tir.21esp <- c();       tir.22esp <- c()
+          tir.23esp <- c();       tir.24esp <- c()
+          tir.25esp <- c();       tir.26esp <- c()
+          tir.27esp <- c();       tir.28esp <- c()
+          tir.29esp <- c();       tir.30esp <- c()
+          tir.31esp <- c();       tir.32esp <- c()
+          tir.33esp <- c();       tir.34esp <- c()
+          tir.35esp <- c()
+          
+          for(i in 1:10000){
+            tir.1esp <- append(tir.1esp,as.character(sample(x = champ.esp$Nom_espece,size=1,replace=FALSE,prob = champ.esp$prob)))
+            tir.2esp <- append(tir.2esp,as.character(sample(x = champ.esp$Nom_espece,size=2,replace=FALSE,prob = champ.esp$prob)))
+            tir.3esp <- append(tir.3esp,as.character(sample(x = champ.esp$Nom_espece,size=3,replace=FALSE,prob = champ.esp$prob)))
+            tir.4esp <- append(tir.4esp,as.character(sample(x = champ.esp$Nom_espece,size=4,replace=FALSE,prob = champ.esp$prob)))
+            tir.5esp <- append(tir.5esp,as.character(sample(x = champ.esp$Nom_espece,size=5,replace=FALSE,prob = champ.esp$prob)))
+            tir.6esp <- append(tir.6esp,as.character(sample(x = champ.esp$Nom_espece,size=6,replace=FALSE,prob = champ.esp$prob)))
+            tir.7esp <- append(tir.7esp,as.character(sample(x = champ.esp$Nom_espece,size=7,replace=FALSE,prob = champ.esp$prob)))
+            tir.8esp <- append(tir.8esp,as.character(sample(x = champ.esp$Nom_espece,size=8,replace=FALSE,prob = champ.esp$prob)))
+            tir.9esp <- append(tir.9esp,as.character(sample(x = champ.esp$Nom_espece,size=9,replace=FALSE,prob = champ.esp$prob)))
+            tir.10esp <- append(tir.10esp,as.character(sample(x = champ.esp$Nom_espece,size=10,replace=FALSE,prob = champ.esp$prob)))
+            tir.11esp <- append(tir.11esp,as.character(sample(x = champ.esp$Nom_espece,size=11,replace=FALSE,prob = champ.esp$prob)))
+            tir.12esp <- append(tir.12esp,as.character(sample(x = champ.esp$Nom_espece,size=12,replace=FALSE,prob = champ.esp$prob)))
+            tir.13esp <- append(tir.13esp,as.character(sample(x = champ.esp$Nom_espece,size=13,replace=FALSE,prob = champ.esp$prob)))
+            tir.14esp <- append(tir.14esp,as.character(sample(x = champ.esp$Nom_espece,size=14,replace=FALSE,prob = champ.esp$prob)))
+            tir.15esp <- append(tir.15esp,as.character(sample(x = champ.esp$Nom_espece,size=15,replace=FALSE,prob = champ.esp$prob)))
+            tir.16esp <- append(tir.16esp,as.character(sample(x = champ.esp$Nom_espece,size=16,replace=FALSE,prob = champ.esp$prob)))
+            tir.17esp <- append(tir.17esp,as.character(sample(x = champ.esp$Nom_espece,size=17,replace=FALSE,prob = champ.esp$prob)))
+            tir.18esp <- append(tir.18esp,as.character(sample(x = champ.esp$Nom_espece,size=18,replace=FALSE,prob = champ.esp$prob)))
+            tir.19esp <- append(tir.19esp,as.character(sample(x = champ.esp$Nom_espece,size=19,replace=FALSE,prob = champ.esp$prob)))
+            tir.20esp <- append(tir.20esp,as.character(sample(x = champ.esp$Nom_espece,size=20,replace=FALSE,prob = champ.esp$prob)))
+            tir.21esp <- append(tir.21esp,as.character(sample(x = champ.esp$Nom_espece,size=21,replace=FALSE,prob = champ.esp$prob)))
+            tir.22esp <- append(tir.22esp,as.character(sample(x = champ.esp$Nom_espece,size=22,replace=FALSE,prob = champ.esp$prob)))
+            tir.23esp <- append(tir.23esp,as.character(sample(x = champ.esp$Nom_espece,size=23,replace=FALSE,prob = champ.esp$prob)))
+            tir.24esp <- append(tir.24esp,as.character(sample(x = champ.esp$Nom_espece,size=24,replace=FALSE,prob = champ.esp$prob)))
+            tir.25esp <- append(tir.25esp,as.character(sample(x = champ.esp$Nom_espece,size=25,replace=FALSE,prob = champ.esp$prob)))
+            tir.26esp <- append(tir.26esp,as.character(sample(x = champ.esp$Nom_espece,size=26,replace=FALSE,prob = champ.esp$prob)))
+            tir.27esp <- append(tir.27esp,as.character(sample(x = champ.esp$Nom_espece,size=27,replace=FALSE,prob = champ.esp$prob)))
+            tir.28esp <- append(tir.28esp,as.character(sample(x = champ.esp$Nom_espece,size=28,replace=FALSE,prob = champ.esp$prob)))
+            tir.29esp <- append(tir.29esp,as.character(sample(x = champ.esp$Nom_espece,size=29,replace=FALSE,prob = champ.esp$prob)))
+            tir.30esp <- append(tir.30esp,as.character(sample(x = champ.esp$Nom_espece,size=30,replace=FALSE,prob = champ.esp$prob)))
+            tir.31esp <- append(tir.31esp,as.character(sample(x = champ.esp$Nom_espece,size=31,replace=FALSE,prob = champ.esp$prob)))
+            tir.32esp <- append(tir.32esp,as.character(sample(x = champ.esp$Nom_espece,size=32,replace=FALSE,prob = champ.esp$prob)))
+            tir.33esp <- append(tir.33esp,as.character(sample(x = champ.esp$Nom_espece,size=33,replace=FALSE,prob = champ.esp$prob)))
+            tir.34esp <- append(tir.34esp,as.character(sample(x = champ.esp$Nom_espece,size=34,replace=FALSE,prob = champ.esp$prob)))
+            tir.35esp <- append(tir.35esp,as.character(sample(x = champ.esp$Nom_espece,size=35,replace=FALSE,prob = champ.esp$prob)))
+            
+            
+          }
+          
+          # changement de format de l'objet : vecteur --> matrixx
+          tir.1esp <- matrix(tir.1esp)
+          tir.2esp <- matrix(tir.2esp,ncol=2,byrow=T)
+          tir.3esp <- matrix(tir.3esp,ncol=3,byrow=T)
+          tir.4esp <- matrix(tir.4esp,ncol=4,byrow=T)
+          tir.5esp <- matrix(tir.5esp,ncol=5,byrow=T)
+          tir.6esp <- matrix(tir.6esp,ncol=6,byrow=T)
+          tir.7esp <- matrix(tir.7esp,ncol=7,byrow=T)
+          tir.8esp <- matrix(tir.8esp,ncol=8,byrow=T)
+          tir.9esp <- matrix(tir.9esp,ncol=9,byrow=T)
+          tir.10esp <- matrix(tir.10esp,ncol=10,byrow=T)
+          tir.11esp <- matrix(tir.11esp,ncol=11,byrow=T)
+          tir.12esp <- matrix(tir.12esp,ncol=12,byrow=T)
+          tir.13esp <- matrix(tir.13esp,ncol=13,byrow=T)
+          tir.14esp <- matrix(tir.14esp,ncol=14,byrow=T)
+          tir.15esp <- matrix(tir.15esp,ncol=15,byrow=T)
+          tir.16esp <- matrix(tir.16esp,ncol=16,byrow=T)
+          tir.17esp <- matrix(tir.17esp,ncol=17,byrow=T)
+          tir.18esp <- matrix(tir.18esp,ncol=18,byrow=T)
+          tir.19esp <- matrix(tir.19esp,ncol=19,byrow=T)
+          tir.20esp <- matrix(tir.20esp,ncol=20,byrow=T)
+          tir.21esp <- matrix(tir.21esp,ncol=21,byrow=T)
+          tir.22esp <- matrix(tir.22esp,ncol=22,byrow=T)
+          tir.23esp <- matrix(tir.23esp,ncol=23,byrow=T)
+          tir.24esp <- matrix(tir.24esp,ncol=24,byrow=T)
+          tir.25esp <- matrix(tir.25esp,ncol=25,byrow=T)
+          tir.26esp <- matrix(tir.26esp,ncol=26,byrow=T)
+          tir.27esp <- matrix(tir.27esp,ncol=27,byrow=T)
+          tir.28esp <- matrix(tir.28esp,ncol=28,byrow=T)
+          tir.29esp <- matrix(tir.29esp,ncol=29,byrow=T)
+          tir.30esp <- matrix(tir.30esp,ncol=30,byrow=T)
+          tir.31esp <- matrix(tir.31esp,ncol=31,byrow=T)
+          tir.32esp <- matrix(tir.32esp,ncol=32,byrow=T)
+          tir.33esp <- matrix(tir.33esp,ncol=33,byrow=T)
+          tir.34esp <- matrix(tir.34esp,ncol=34,byrow=T)
+          tir.35esp <- matrix(tir.35esp,ncol=35,byrow=T)
+          
+        
+        # bouclage general (part especes communes dans listes) ----
+        
+          tab.qt.global.part <- data.frame() # pour stack les 35 moyennes des quantiles
+          
+          champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
+          row.names(champ.esp) <- champ.esp$Nom_espece
+          
+          for(j in 1:35){
+            nb.esp <- j
+            
+            tab.qt <- data.frame() # dtf 95%
+            
+            vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
+            
+            vec.communs <- champ.esp[vec.tir,"communs"]
+            tab.communs <- matrix(vec.communs,nrow = 10000)
+            
+            for(i in 1:100){
+              test <- sample(x = row(tab.communs),size=1000)
+              # comm = part en bootstrap
+              #tab.communs.boot <- tab.communs[test,]
+              
+              tab.communs.boot <- as.matrix(tab.communs[test,])
+              tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot))) # part des especes communes dans une liste
+              
+              tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975)) # montre 95% des data
+              
+              min_max <- c(min(tab.communs.boot[,ncol(tab.communs.boot)]),max(tab.communs.boot[,ncol(tab.communs.boot)]))
+              
+              tab.communs.boot.qt <- append(tab.communs.boot.qt,min_max)
+              
+              tab.qt <- rbind(tab.qt,tab.communs.boot.qt)
+              
+            }
+            
+            tab.qt.global.part <- rbind(tab.qt.global.part,apply(X = tab.qt,2,FUN=mean))
+            cat(nb.esp," /"," 35\n")
+            
+          }
+        
+        # homogeineisation des noms de colonnes
+        colnames(tab.qt.global.part) <- c("borne_inf","mediane","borne_sup","min","max")
+
+        # visualisation de la courbe
+        ggplot(tab.qt.global.part) + geom_point(aes(x = c(rep(1:35)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:35)),y=mediane)) +
+          geom_ribbon(aes(x=c(rep(1:35)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Part des especes communes dans la listes (95%)") + 
+          geom_ribbon(aes(x=c(rep(1:35)),ymin=min,ymax=max),alpha=0.15)+
+          xlab("Nombre d'especes par listes") + ylab("Part en %")
+        
+        # globalisation du bootstrap (proba de trouver au moins une espece rare) ----
+        
+          tab.qt.global.prob <- data.frame() # pour stack les 35 miyennes des quantiles
+          champ.esp$communs <- as.numeric(champ.esp$prob > 0.1)
+          row.names(champ.esp) <- champ.esp$Nom_espece
+          
+          for(j in 1:35){
+            nb.esp <- j
+            
+            tab.qt <- data.frame()
+            
+            vec.tir <- as.vector(get(paste0("tir.",nb.esp,"esp")))
+            
+            vec.communs <- champ.esp[vec.tir,"communs"]
+            tab.communs <- matrix(vec.communs,nrow = 10000)
+            
+            for(i in 1:100){
+              test <- sample(x = row(tab.communs),size=1000)
+              # comm = part en bootstrap
+              #tab.communs.boot <- tab.communs[test,]
+              
+              tab.communs.boot <- tab.communs[test,]
+              tab.communs.boot <- as.numeric(apply(as.matrix(tab.communs.boot),1,any))
+              tab.communs.boot <- sum(tab.communs.boot)/length(tab.communs.boot) # part des especes communes dans une liste
+              
+              tab.qt <- rbind(tab.qt,tab.communs.boot)
+              #tab.communs.boot <- as.matrix(tab.communs.boot)
+              #tab.communs.boot <- cbind(tab.communs.boot,rowSums(tab.communs.boot/ncol(tab.communs.boot)))
+              #tab.communs.boot.qt <- quantile(tab.communs.boot[,ncol(tab.communs.boot)],c(0.025,0.5,0.975))
+              
+              
+            }
+            
+            tab.qt.global.prob <- rbind(tab.qt.global.prob,quantile(x = tab.qt[,1],c(0.025,0.5,0.975)))
+            cat(nb.esp," /"," 35\n")
+            
+          }
+          
+          # homogeineisation des noms de colonnes
+          colnames(tab.qt.global.prob) <- c("borne_inf","mediane","borne_sup")
+          # visualisation de la courbe
+          ggplot(tab.qt.global.prob) + geom_point(aes(x = c(rep(1:35)),y=mediane,ymin=0.75)) + geom_line(aes(x = c(rep(1:35)),y=mediane)) +
+            geom_ribbon(aes(x=c(rep(1:35)),ymin=borne_inf,ymax=borne_sup),alpha=0.5) + ggtitle("Proba d'avoir au moins une espece communes dans les listes") + 
+            xlab("Nombre d'especes par listes") + ylab("Probabilité")
+          
+    
+        
+    
+    # Sauvegarde 1 ----
+      load("C:/git/epoc/04bis_save1.RData")
+          
+    # Dtf de synthese (regroupant toutes les informations sur les ecoregions) [Quels listes appartiennent a quelles régions ?] ----
+      # Calcul du barycentre des observations par listes (proxy, position de l'observateur)
+        bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
+        bary.y <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.y) <- c("ID_liste","Y_barycentre_L93")
+        
+        bary <- plyr::join(bary.x,bary.y,by="ID_liste")
+        
+      # formation du sf des localisations des barycentres
+        bary_sf <- st_as_sf(bary,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+        
+            
       
       
       
