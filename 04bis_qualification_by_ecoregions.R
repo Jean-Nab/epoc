@@ -19,7 +19,7 @@
   eco.reg <- st_read("C:/git/epoc/data/france_ecoregions1.shp")
   
   
-  load("C:/git/epoc/04bis_initialisation.R.RData")
+  load("C:/git/epoc/04bis_initialisation.RData")
 
   # tri des données ----
     # Retrait des listes w/ conditions speciales ----
@@ -62,8 +62,7 @@
       eco.reg <- st_transform(eco.reg,crs=2154)
       
     # exploration preleminaire (-> table)
-      obs.haute_mont <- which(epoc.envi.obs_sf$Altitude >= 1000) ; length(obs.haute_mont)
-      epoc.envi.obs_sf.preli <- epoc.envi.obs_sf[-obs.haute_mont,]
+      epoc.envi.obs_sf.preli <- epoc.envi.obs_sf[,]
       
       table.preli <- st_intersects(x=eco.reg,y=epoc.envi.obs_sf.preli,sparse = F)
       table.preli <- t(table.preli)
@@ -109,7 +108,7 @@
           i <- i+1
         }
         
-        resul <- matrix(c(reg.nam,nb.list,nb.obs,obs),nrow=12,byrow=F)
+        resul <- matrix(c(reg.nam,nb.list,nb.obs,obs),nrow=ncol(table.preli),byrow=F)
         resul <- data.frame(resul)
         
         colnames(resul) <- c("nom_ecoregion","nb_listes","nb_observateurs","nb_observations")
