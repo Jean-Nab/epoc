@@ -34,5 +34,8 @@ brouillon.R
 brouillon2.R
 brouillon3.R
 brouillon4.R
+<<<<<<< HEAD
 *.R
 *.qgz
+=======
+>>>>>>> parent of 22d25aa... Update .gitignore
