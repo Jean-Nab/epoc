@@ -349,15 +349,56 @@
       load("C:/git/epoc/04bis_save1.RData")
           
     # Dtf de synthese (regroupant toutes les informations sur les ecoregions) [Quels listes appartiennent a quelles régions ?] ----
-      # Calcul du barycentre des observations par listes (proxy, position de l'observateur)
+      # Calcul du barycentre des observations par listes (proxy, position de l'observateur) ----
         bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
         bary.y <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.y) <- c("ID_liste","Y_barycentre_L93")
         
         bary <- plyr::join(bary.x,bary.y,by="ID_liste")
         
       # formation du sf des localisations des barycentres
-        bary_sf <- st_as_sf(bary,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+        bary.sf <- st_as_sf(bary,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+        # visualisation localisation des points
+          ggplot() + geom_sf(data=eco.reg,aes(fill=ECO_NAME)) +
+            geom_sf(data=bary.sf)
+      
         
+      # Preparation intersection des ecoregions ----
+        # Gestion des frontieres entre ecoregions (formation d'un buffer de 25 km)
+          eco.reg.l93 <- st_transform(eco.reg,crs=2154) # conversion planaire en L93 des ecoregions
+          eco.reg.l93.buf <- st_buffer(eco.reg.l93,dist = 25000)
+          
+          '# bloc a part 
+            pol_front.EAmf_WEbf <- st_intersection(eco.reg.l93.buf[eco.reg.l93.buf$ECO_NAME == "European Atlantic mixed forests",],
+                                                   eco.reg.l93.buf[eco.reg.l93.buf$ECO_NAME == "Western European broadleaf forests",])
+            j <- st_intersects(y=pol_front.EAmf_WEbf,x=bary.sf,sparse=F) ; j <- as.numeric(j) ; sum(j) # nb liste dans cette zone tampon
+          
+            obs.in.front <- which(j == TRUE)
+            bary.in.front <- bary.sf[obs.in.front,]
+            
+            ggplot() + geom_sf(data=eco.reg) + geom_sf(data=pol_front.EAmf_WEbf,colour="red") + geom_sf(data=bary.in.front,colour="purple")
+          ###'
+            
+        bary.reg <- st_intersects(x=bary.sf,y=eco.reg.l93.buf,sparse=FALSE)
+        bary.reg <- as.data.frame(bary.reg)
+        colnames(bary.reg) <- eco.reg$ECO_NAME
+        bary.reg$ID_liste <- bary$ID_liste
+        
+        bary.reg <- plyr::join(bary,bary.reg,by="ID_liste")
+        
+        for(i in 4:ncol(bary.reg)){
+          bary.reg[,i] <- as.numeric(bary.reg[,i])
+        }
+        
+        bary.reg$nb_intersection <- 0
+        bary.reg[,"nb_intersection"] <- rowSums(bary.reg[,4:ncol(bary.reg)])
+        
+        bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+        
+        # carte
+          ggplot() + geom_sf(data=eco.reg) + geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection)))
+            
+        
+          
             
       
       
