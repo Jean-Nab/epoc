@@ -34,14 +34,6 @@
       epoc.envi.liste <- epoc.envi.liste[which(del.juin_jui1 == FALSE),]
       epoc.oiso <- epoc.oiso[which(del.juin_jui2 == FALSE),]
       
-      # - realise a plus de 1200m d'altitude (presence d'autre protocoles)
-      del.alt <- epoc.envi.liste[which(epoc.envi.liste$Altitude > 1200),"ID_liste"]
-      del.alt1 <- epoc.envi.liste$ID_liste %in% del.alt
-      del.alt2 <- epoc.oiso$ID_liste %in% del.alt
-      
-      epoc.envi.liste <- epoc.envi.liste[which(del.alt1 == FALSE),]
-      epoc.oiso <- epoc.oiso[which(del.alt2 == FALSE),]
-      
       # - realise en dehors de la periode 5-17h
       del.hour <- epoc.envi.liste[which(epoc.envi.liste$Heure_de_debut < 5 | epoc.envi.liste$Heure_de_debut > 17),"ID_liste"]
       del.hour1 <- epoc.envi.liste$ID_liste %in% del.hour
@@ -350,6 +342,18 @@
     # Sauvegarde 1 ----
       load("C:/git/epoc/04bis_save1.RData")
           
+    # Pre-analyse : retrait des epoc de hautes altitudes ----
+      high.epoc <- epoc.envi.liste[which(epoc.envi.liste$Altitude >= 1200),"ID_liste"]
+      
+      # formation de dtf speciaux haute altitudes
+        epoc.envi.obs.high <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == TRUE),]
+        epoc.oiso.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == TRUE),]
+          
+      # retrait dans le jeu de donnee global
+        epoc.envi.obs <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == FALSE),]
+        epoc.oiso <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == FALSE),]
+        
+      
     # Dtf de synthese (regroupant toutes les informations sur les ecoregions) [Quels listes appartiennent a quelles régions ?] ----
       # Calcul du barycentre des observations par listes (proxy, position de l'observateur) ----
         bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
@@ -361,7 +365,9 @@
         bary.sf <- st_as_sf(bary,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
         
         # visualisation localisation des points ----
-          ggplot() + geom_sf(data=eco.reg,aes(fill=ECO_NAME)) +
+          ggplot() + 
+            geom_sf(data=fra.adm.l93,alpha=0.5) +
+            geom_sf(data=eco.reg,aes(fill=ECO_NAME),alpha=0.75) +
             geom_sf(data=bary.sf,alpha=0.05) +
             ggtitle("Représentation des écorégions et de la géolocalisation des listes")
       
@@ -371,16 +377,6 @@
           eco.reg.l93 <- st_transform(eco.reg,crs=2154) # conversion planaire en L93 des ecoregions
           eco.reg.l93.buf <- st_buffer(eco.reg.l93,dist = 25000)
           
-          '# bloc a part 
-            pol_front.EAmf_WEbf <- st_intersection(eco.reg.l93.buf[eco.reg.l93.buf$ECO_NAME == "European Atlantic mixed forests",],
-                                                   eco.reg.l93.buf[eco.reg.l93.buf$ECO_NAME == "Western European broadleaf forests",])
-            j <- st_intersects(y=pol_front.EAmf_WEbf,x=bary.sf,sparse=F) ; j <- as.numeric(j) ; sum(j) # nb liste dans cette zone tampon
-          
-            obs.in.front <- which(j == TRUE)
-            bary.in.front <- bary.sf[obs.in.front,]
-            
-            ggplot() + geom_sf(data=eco.reg) + geom_sf(data=pol_front.EAmf_WEbf,colour="red") + geom_sf(data=bary.in.front,colour="purple")
-          '
         # Intersection points d'observation et région
           bary.reg <- st_intersects(x=bary.sf,y=eco.reg.l93.buf,sparse=FALSE)
           bary.reg <- as.data.frame(bary.reg) # dtf contenant les points et les regions associées a leur localisation
@@ -397,6 +393,37 @@
         # Information sur les zones tampons (cas ou un point d'obs recouvre plus d'un polygone de région)
           bary.reg$nb_intersection <- 0
           bary.reg[,"nb_intersection"] <- rowSums(bary.reg[,4:ncol(bary.reg)])
+          
+        # Cas des epoc d'altitude
+          bary.x.high <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs.high,mean) ; colnames(bary.x.high) <- c("ID_liste","X_barycentre_L93")
+          bary.y.high <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.obs.high,mean) ; colnames(bary.y.high) <- c("ID_liste","Y_barycentre_L93")
+          
+          bary.high <- plyr::join(bary.x.high,bary.y.high,by="ID_liste")
+          
+          bary.high.sf <- st_as_sf(bary.high,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+          
+          bary.high.reg <- st_intersects(x=bary.high.sf,y=eco.reg.l93.buf,sparse=FALSE)
+          bary.high.reg <- as.data.frame(bary.high.reg)
+          
+          for(i in 1:ncol(bary.high.reg)){
+            bary.high.reg[,i] <- 0
+          }
+          
+          colnames(bary.high.reg) <- eco.reg$ECO_NAME
+          bary.high.reg$ID_liste <- bary.high$ID_liste
+          
+          bary.high.reg <- plyr::join(bary.high,bary.high.reg,by="ID_liste")
+          
+          bary.high.reg$nb_intersection <- 0
+          bary.high.reg[,"nb_intersection"] <- 1
+          
+          
+          # homogeneisation
+            bary.high.reg$`Hautes altitudes` <- 1
+            bary.reg$`Hautes altitudes` <- 0
+            
+          bary.reg <- rbind(bary.reg,bary.high.reg)
+          
         
         bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154) # formation de l'objet sf
         
@@ -414,7 +441,38 @@
             geom_sf(data=bary.reg.sf[bary.reg.sf$`European Atlantic mixed forests` ==TRUE,],aes(colour=as.factor(nb_intersection))) +
             ggtitle("Zoom sur l'écorégion 'European Atlantic mixed forests'\n(Vérification de la bonne localisation des points)")
           
+      # Formation des listes communes par région + flag [cas hors frontieres] -----
+          epoc.oiso$observation <- 1
+          
+          bary.1reg <- bary.reg[bary.reg$nb_intersection == 1,]
+          
+          
+          #regions <- colnames(bary.1reg.sf[2:(ncol(bary.1reg.sf)-3)])
+          
+          i <- 4 # 1ere colonne == colone des id listes
+          
+          while(i <= length(bary.1reg[4:(ncol(bary.1reg)-1)])){
+            reg1.tmp <- bary.1reg[,c(1,i)] # formation du dtf regroupant id de liste et la presence/absence d'obs de la region i
             
+            id.list.reg <- reg1.tmp[reg1.tmp[2] == 1,"ID_liste"] # detection des id de liste detectee dans cette region
+            
+            # recuperation des observation liee aux id de liste
+              det.list.byreg.epoc_oiso <- epoc.oiso$ID_liste %in% id.list.reg 
+              
+              var.reg <- paste0("champ.reg.",abbreviate(colnames(reg1.tmp[2])))
+            
+              assign(x = var.reg,
+                     value = aggregate(observation ~ Observateur + ID_liste,
+                                       data =epoc.oiso[which(det.list.byreg.epoc_oiso == TRUE),],
+                                       FUN = sum))
+              
+              get(var.reg)$nb_liste <- 1
+              
+
+            
+            i <- i + 1
+          }
+          
       
       
       
