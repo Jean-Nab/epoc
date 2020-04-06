@@ -17,7 +17,9 @@
   epoc.envi.obs <- read.table(file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),header=T,sep="\t", dec=","
                               , encoding="UTF-8",quote="")
   
-  eco.reg <- st_read("C:/git/epoc/data/france_ecoregions_v2.shp")
+  eco.reg <- st_read("C:/git/epoc/data/france_ecoregions_v3.shp")
+  
+  fra.adm.l93 <- st_transform(st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm0.shp"),crs=2154)
   
   
   load("C:/git/epoc/04bis_initialisation.RData")
@@ -357,9 +359,11 @@
         
       # formation du sf des localisations des barycentres
         bary.sf <- st_as_sf(bary,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
-        # visualisation localisation des points
+        
+        # visualisation localisation des points ----
           ggplot() + geom_sf(data=eco.reg,aes(fill=ECO_NAME)) +
-            geom_sf(data=bary.sf)
+            geom_sf(data=bary.sf,alpha=0.05) +
+            ggtitle("Représentation des écorégions et de la géolocalisation des listes")
       
         
       # Preparation intersection des ecoregions ----
@@ -376,28 +380,39 @@
             bary.in.front <- bary.sf[obs.in.front,]
             
             ggplot() + geom_sf(data=eco.reg) + geom_sf(data=pol_front.EAmf_WEbf,colour="red") + geom_sf(data=bary.in.front,colour="purple")
-          ###'
+          '
+        # Intersection points d'observation et région
+          bary.reg <- st_intersects(x=bary.sf,y=eco.reg.l93.buf,sparse=FALSE)
+          bary.reg <- as.data.frame(bary.reg) # dtf contenant les points et les regions associées a leur localisation
+          
+          # gestion forme du dtf
+            colnames(bary.reg) <- eco.reg$ECO_NAME
+            bary.reg$ID_liste <- bary$ID_liste
             
-        bary.reg <- st_intersects(x=bary.sf,y=eco.reg.l93.buf,sparse=FALSE)
-        bary.reg <- as.data.frame(bary.reg)
-        colnames(bary.reg) <- eco.reg$ECO_NAME
-        bary.reg$ID_liste <- bary$ID_liste
-        
-        bary.reg <- plyr::join(bary,bary.reg,by="ID_liste")
-        
-        for(i in 4:ncol(bary.reg)){
-          bary.reg[,i] <- as.numeric(bary.reg[,i])
-        }
-        
-        bary.reg$nb_intersection <- 0
-        bary.reg[,"nb_intersection"] <- rowSums(bary.reg[,4:ncol(bary.reg)])
-        
-        bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
-        
-        # carte
-          ggplot() + geom_sf(data=eco.reg) + geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection)))
+            bary.reg <- plyr::join(bary,bary.reg,by="ID_liste")
             
+            for(i in 4:ncol(bary.reg)){
+              bary.reg[,i] <- as.numeric(bary.reg[,i])
+            }
+        # Information sur les zones tampons (cas ou un point d'obs recouvre plus d'un polygone de région)
+          bary.reg$nb_intersection <- 0
+          bary.reg[,"nb_intersection"] <- rowSums(bary.reg[,4:ncol(bary.reg)])
         
+        bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154) # formation de l'objet sf
+        
+        # cartes ----
+          ggplot() + 
+            geom_sf(data=fra.adm.l93,alpha=0.5) +
+            geom_sf(data=eco.reg.l93,alpha=0.75) +
+            geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection))) +
+            ggtitle("Carte de visualisation des zones tampons\n(Zones à la frontière d'une ou plusieurs écorégions)")
+            
+          ggplot() +
+            geom_sf(data=fra.adm.l93,alpha=0.5) +
+            geom_sf(data=eco.reg.l93,alpha=0.75) + 
+            geom_sf(data=eco.reg[eco.reg$ECO_NAME == "European Atlantic mixed forests",],fill="darkseagreen4",alpha=0.5)+
+            geom_sf(data=bary.reg.sf[bary.reg.sf$`European Atlantic mixed forests` ==TRUE,],aes(colour=as.factor(nb_intersection))) +
+            ggtitle("Zoom sur l'écorégion 'European Atlantic mixed forests'\n(Vérification de la bonne localisation des points)")
           
             
       
