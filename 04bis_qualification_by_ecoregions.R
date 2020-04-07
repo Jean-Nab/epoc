@@ -350,8 +350,8 @@
         epoc.oiso.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == TRUE),]
           
       # retrait dans le jeu de donnee global
-        epoc.envi.obs <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == FALSE),]
-        epoc.oiso <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == FALSE),]
+        #epoc.envi.obs <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == FALSE),]
+        #epoc.oiso.minus.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == FALSE),]
         
       
     # Dtf de synthese (regroupant toutes les informations sur les ecoregions) [Quels listes appartiennent a quelles régions ?] ----
