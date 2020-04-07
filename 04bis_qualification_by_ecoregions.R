@@ -406,23 +406,32 @@
           bary.high.reg <- as.data.frame(bary.high.reg)
           
           for(i in 1:ncol(bary.high.reg)){
-            bary.high.reg[,i] <- 0
+            bary.high.reg[,i] <- as.numeric(bary.high.reg[,i])
           }
           
           colnames(bary.high.reg) <- eco.reg$ECO_NAME
+          bary.high.reg$nb_intersection <- rowSums(bary.high.reg[,1:ncol(bary.high.reg)])
+          
+          bary.high.reg$`Hautes altitudes` <- 1
+          bary.high.reg[bary.high.reg$`Alps conifer and mixed forests` == 1 & bary.high.reg$nb_intersection == 1,"Hautes altitudes"] <- 0
+          bary.high.reg[bary.high.reg$`Hautes altitudes` == 1 & bary.high.reg$nb_intersection == 1,c("European Atlantic mixed forests","Cantabrian mixed forests",
+                                                                                                     "Northeast Spain and Southern France Mediterranean forests","Western European broadleaf forests")] <- 0
+          l <- which(bary.high.reg$nb_intersection != 1)
+          bary.high.reg[l,"nb_intersection"] <- bary.high.reg[l,"nb_intersection"]+1
+          
           bary.high.reg$ID_liste <- bary.high$ID_liste
+          
           
           bary.high.reg <- plyr::join(bary.high,bary.high.reg,by="ID_liste")
           
-          bary.high.reg$nb_intersection <- 0
-          bary.high.reg[,"nb_intersection"] <- 1
           
           
           # homogeneisation
-            bary.high.reg$`Hautes altitudes` <- 1
+            #bary.high.reg$`Hautes altitudes` <- 1
             bary.reg$`Hautes altitudes` <- 0
             
           bary.reg <- rbind(bary.reg,bary.high.reg)
+          bary.reg <- bary.reg[,c(1:8,10,9)]
           
         
         bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154) # formation de l'objet sf
@@ -442,7 +451,12 @@
             ggtitle("Zoom sur l'écorégion 'European Atlantic mixed forests'\n(Vérification de la bonne localisation des points)")
           
       # Formation des listes communes par région + flag [cas hors frontieres] -----
-          epoc.oiso$observation <- 1
+          # initialisation pour la fonction determination_communs_by_regions
+            epoc.oiso$diversite <- 1
+            tab.qt.global.part$diversite <- c(rep(1:nrow(tab.qt.global.part)))
+            
+            cate.esp <- read.csv(file = "C:/git/epoc/data/listes_especes_all_epoc_JD.csv",header=T,sep=";",dec=",",encoding = "UTF-8")
+            cate.esp2 <- cate.esp[,c("Nom_espece","Decision")]  
           
           bary.1reg <- bary.reg[bary.reg$nb_intersection == 1,]
           
@@ -451,7 +465,7 @@
           
           i <- 4 # 1ere colonne == colone des id listes
           
-          while(i <= length(bary.1reg[4:(ncol(bary.1reg)-1)])){
+          while(i <= ncol(bary.1reg)-1){
             reg1.tmp <- bary.1reg[,c(1,i)] # formation du dtf regroupant id de liste et la presence/absence d'obs de la region i
             
             id.list.reg <- reg1.tmp[reg1.tmp[2] == 1,"ID_liste"] # detection des id de liste detectee dans cette region
