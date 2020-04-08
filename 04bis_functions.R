@@ -2,7 +2,8 @@
 
 # input : reg1.tmp (cf 04bis_qualification_by_ecoregions.R) ==> dtf des listes et de leur presence/absence dans l'écorégion de la boucle
 # output : dtf champion / dtf des flags
-determination_communs_by_regions <- function(reg1.tmp){
+determination_communs_by_regions <- function(dtf.reg1){
+  
   library(data.table)
   
   id.list.reg <- reg1.tmp[reg1.tmp[2] == 1,"ID_liste"] # detection des id de liste detectee dans cette region  
@@ -33,7 +34,7 @@ determination_communs_by_regions <- function(reg1.tmp){
     
     champ.oiso.region <- epoc.oiso[which(det.champ.epoc.oiso.region == TRUE),] # formation du dtf d'observation des champions
     champ.oiso.region <- plyr::count(df=champ.oiso.region,
-                                     vars="Nom_espece")
+                                     vars=c("Nom_espece","Nom_latin"))
     
     # obtention du nombre d'epoc realiser par les champions dans cette region
       nb.list.champ <- sum(observateur.byregion[which(observateur.byregion$nb_liste >= 30),"nb_liste"])
@@ -158,21 +159,32 @@ determination_communs_by_regions <- function(reg1.tmp){
       observateur.byregion <- plyr::join(observateur.byregion,observateur.flag.scarce.byregion,by="Observateur")
       observateur.byregion <- plyr::join(observateur.byregion,observateur.flag.first.byregion,by="Observateur")
       
+      
+      
+      
+      
+  # Return des dtf dans l'environnement global ----
+      
+      # indexation selon la region (nouvelle colonne $regions dans chaque dtf de sortie de fonction)
+      
+      observateur.byregion$regions <- colnames(reg1.tmp[2])
+      list.byregion$regions <- colnames(reg1.tmp[2])
+      champ.oiso.region$regions <- colnames(reg1.tmp[2])
+      
+      # enregistrement des variables dans l'environnement global
+      var.reg <- paste0("observateur.reg.",abbreviate(colnames(reg1.tmp[2])))
+      assign(x = var.reg, value = observateur.byregion,
+             envir = globalenv())
+      
+      var.reg2 <- paste0("list.reg.",abbreviate(colnames(reg1.tmp[2])))
+      assign(x = var.reg2, value = list.byregion,
+             envir = globalenv())
+      
+      var.reg3 <- paste0("oiso.reg.",abbreviate(colnames(reg1.tmp[2])))
+      assign(x = var.reg3, value = champ.oiso.region[,c("Nom_espece","Nom_latin","freq","communs","regions")],
+             envir = globalenv())
     
-    
-    
-    
-  # sortie de la fonction 
-      return(observateur.byregion)
-      return(list.byregion)
-      return(champ.oiso.region[,c("Nom_espece","freq")])
-    
-    
-    
-    
-    
-    
-    
+
     
     
 }
