@@ -394,7 +394,7 @@
           bary.reg$nb_intersection <- 0
           bary.reg[,"nb_intersection"] <- rowSums(bary.reg[,4:ncol(bary.reg)])
           
-        # Cas des epoc d'altitude
+        # Cas des epoc d'altitude -----
           bary.x.high <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs.high,mean) ; colnames(bary.x.high) <- c("ID_liste","X_barycentre_L93")
           bary.y.high <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.obs.high,mean) ; colnames(bary.y.high) <- c("ID_liste","Y_barycentre_L93")
           
@@ -426,7 +426,7 @@
           
           
           
-          # homogeneisation
+          # homogeneisation ----
             #bary.high.reg$`Hautes altitudes` <- 1
             bary.reg$`Hautes altitudes` <- 0
             
