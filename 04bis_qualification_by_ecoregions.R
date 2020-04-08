@@ -350,14 +350,14 @@
         epoc.oiso.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == TRUE),]
           
       # retrait dans le jeu de donnee global
-        #epoc.envi.obs <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == FALSE),]
-        #epoc.oiso.minus.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == FALSE),]
+        epoc.envi.minus.obs <- epoc.envi.obs[which(epoc.envi.obs$ID_liste %in% high.epoc == FALSE),]
+        epoc.oiso.minus.high <- epoc.oiso[which(epoc.oiso$ID_liste %in% high.epoc == FALSE),]
         
       
     # Dtf de synthese (regroupant toutes les informations sur les ecoregions) [Quels listes appartiennent a quelles régions ?] ----
       # Calcul du barycentre des observations par listes (proxy, position de l'observateur) ----
-        bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
-        bary.y <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.obs,mean) ; colnames(bary.y) <- c("ID_liste","Y_barycentre_L93")
+        bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi.minus.obs,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
+        bary.y <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi.minus.obs,mean) ; colnames(bary.y) <- c("ID_liste","Y_barycentre_L93")
         
         bary <- plyr::join(bary.x,bary.y,by="ID_liste")
         
@@ -410,14 +410,19 @@
           }
           
           colnames(bary.high.reg) <- eco.reg$ECO_NAME
-          bary.high.reg$nb_intersection <- rowSums(bary.high.reg[,1:ncol(bary.high.reg)])
           
           bary.high.reg$`Hautes altitudes` <- 1
-          bary.high.reg[bary.high.reg$`Alps conifer and mixed forests` == 1 & bary.high.reg$nb_intersection == 1,"Hautes altitudes"] <- 0
-          bary.high.reg[bary.high.reg$`Hautes altitudes` == 1 & bary.high.reg$nb_intersection == 1,c("European Atlantic mixed forests","Cantabrian mixed forests",
+          bary.high.reg$`Alps conifer and mixed forests` <- NULL
+          
+          bary.high.reg$nb_intersection <- rowSums(bary.high.reg[,1:ncol(bary.high.reg)])
+          
+          
+          
+          bary.high.reg[bary.high.reg$`Hautes altitudes` == 1 & bary.high.reg$nb_intersection == 2,c("European Atlantic mixed forests","Cantabrian mixed forests",
                                                                                                      "Northeast Spain and Southern France Mediterranean forests","Western European broadleaf forests")] <- 0
-          l <- which(bary.high.reg$nb_intersection != 1)
-          bary.high.reg[l,"nb_intersection"] <- bary.high.reg[l,"nb_intersection"]+1
+         
+          bary.high.reg$nb_intersection <- rowSums(bary.high.reg[,1:(ncol(bary.high.reg))-1])
+          
           
           bary.high.reg$ID_liste <- bary.high$ID_liste
           
@@ -425,13 +430,12 @@
           bary.high.reg <- plyr::join(bary.high,bary.high.reg,by="ID_liste")
           
           
-          
           # homogeneisation ----
-            #bary.high.reg$`Hautes altitudes` <- 1
-            bary.reg$`Hautes altitudes` <- 0
+            bary.reg$`Hautes altitudes` <- bary.reg$`Alps conifer and mixed forests`
+            bary.reg$`Alps conifer and mixed forests` <- NULL
             
           bary.reg <- rbind(bary.reg,bary.high.reg)
-          bary.reg <- bary.reg[,c(1:8,10,9)]
+          bary.reg <- bary.reg[,c(1:7,9,8)]
           
         
         bary.reg.sf <- st_as_sf(bary.reg,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154) # formation de l'objet sf
@@ -440,9 +444,17 @@
           ggplot() + 
             geom_sf(data=fra.adm.l93,alpha=0.5) +
             geom_sf(data=eco.reg.l93,alpha=0.75) +
-            geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection))) +
+            geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection)),alpha=0.25) +
             ggtitle("Carte de visualisation des zones tampons\n(Zones à la frontière d'une ou plusieurs écorégions)")
-            
+        
+        
+          ggplot() + 
+            geom_sf(data=fra.adm.l93,alpha=0.5) +
+            geom_sf(data=eco.reg.l93,alpha=0.75) +
+            geom_sf(data=bary.reg.sf,aes(color=as.factor(nb_intersection)),alpha=0.25) +
+            geom_sf(data = bary.reg.sf[bary.reg.sf$`Hautes altitudes` == 1 & bary.reg.sf$nb_intersection == 1,],aes(fill="black")) +
+            ggtitle("Carte de visualisation des zones tampons\n(Zones à la frontière d'une ou plusieurs écorégions)\n(Points noirs = points de hautes altitudes - > 1200m)")
+              
           ggplot() +
             geom_sf(data=fra.adm.l93,alpha=0.5) +
             geom_sf(data=eco.reg.l93,alpha=0.75) + 
@@ -463,26 +475,12 @@
           
           #regions <- colnames(bary.1reg.sf[2:(ncol(bary.1reg.sf)-3)])
           
-          i <- 4 # 1ere colonne == colone des id listes
+          i <- 5 # 1ere colonne == colone des id listes
           
           while(i <= ncol(bary.1reg)-1){
             reg1.tmp <- bary.1reg[,c(1,i)] # formation du dtf regroupant id de liste et la presence/absence d'obs de la region i
             
-            id.list.reg <- reg1.tmp[reg1.tmp[2] == 1,"ID_liste"] # detection des id de liste detectee dans cette region
-            
-            # recuperation des observation liee aux id de liste
-              det.list.byreg.epoc_oiso <- epoc.oiso$ID_liste %in% id.list.reg 
-              
-              var.reg <- paste0("champ.reg.",abbreviate(colnames(reg1.tmp[2])))
-            
-              assign(x = var.reg,
-                     value = aggregate(observation ~ Observateur + ID_liste,
-                                       data =epoc.oiso[which(det.list.byreg.epoc_oiso == TRUE),],
-                                       FUN = sum))
-              
-              get(var.reg)$nb_liste <- 1
-              
-
+            determination_communs_by_regions(reg1.tmp = reg1.tmp)
             
             i <- i + 1
           }
