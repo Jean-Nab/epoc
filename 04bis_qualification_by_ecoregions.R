@@ -464,29 +464,82 @@
           
       # Formation des listes communes par région + flag [cas hors frontieres] -----
           # initialisation pour la fonction determination_communs_by_regions
-            epoc.oiso$diversite <- 1
-            tab.qt.global.part$diversite <- c(rep(1:nrow(tab.qt.global.part)))
+            epoc.oiso$diversite <- 1 # indice du nb d'espece dans la liste
+            tab.qt.global.part$diversite <- c(rep(1:nrow(tab.qt.global.part))) # permet de comparer les part d'especes communes théoriques vs empiriques
             
-            cate.esp <- read.csv(file = "C:/git/epoc/data/listes_especes_all_epoc_JD.csv",header=T,sep=";",dec=",",encoding = "UTF-8")
-            cate.esp2 <- cate.esp[,c("Nom_espece","Decision")]  
+            # Table des catégories d'especes selon leur niveau de rarete (dire d'expert : Jeremy dupuy)
+              cate.esp <- read.csv(file = "C:/git/epoc/data/listes_especes_all_epoc_JD.csv",header=T,sep=";",dec=",",encoding = "UTF-8")
+              cate.esp2 <- cate.esp[,c("Nom_espece","Decision")]  
           
-          bary.1reg <- bary.reg[bary.reg$nb_intersection == 1,]
+            bary.1reg <- bary.reg[bary.reg$nb_intersection == 1,] # etablissement des listes communes d'especes a partir des listes realiser au coeur de ces region
+            source(file = "C:/git/epoc/04bis_functions.R")
           
           
-          #regions <- colnames(bary.1reg.sf[2:(ncol(bary.1reg.sf)-3)])
-          
-          i <- 5 # 1ere colonne == colone des id listes
+          i <- 4 # 1ere colonne == colone des id listes
           
           while(i <= ncol(bary.1reg)-1){
             reg1.tmp <- bary.1reg[,c(1,i)] # formation du dtf regroupant id de liste et la presence/absence d'obs de la region i
             
-            determination_communs_by_regions(reg1.tmp = reg1.tmp)
+            determination_communs_by_regions(dtf.reg1 = reg1.tmp)
             
             i <- i + 1
           }
           
-      
-      
+      # Listes communes d'especes + flagging des listes dans des zones tampons de 2 écorégions -----
+        bary.2reg <- bary.reg[bary.reg$nb_intersection == 2,]
+        
+        i <- 4
+        while(i < ncol(bary.1reg)-1){
+          
+          j <- i + 1
+          while(j <= ncol(bary.1reg)-1){
+            
+            bary.2reg.tmp <- bary.2reg[,c(1,i,j)]
+            det.intersect.2reg <- which(bary.2reg.tmp[2] == 1 & bary.2reg.tmp[3] == 1)
+            
+            id.list.2reg.tmp <- bary.2reg.tmp[det.intersect.2reg,"ID_liste"]
+            
+            # récupération des observations des listes intersectant le polygone de la colonne i et celui de la colonne j
+              det.list.2reg.epoc.oiso <- epoc.oiso$ID_liste %in% id.list.2reg.tmp
+            
+              epoc.oiso.2reg <- epoc.oiso[det.list.2reg.epoc.oiso,]
+              
+            # formation des dtf de synthese sur les listes et les observateurs de cette zone tampon
+              list.by2region <- aggregate(diversite ~ Observateur + ID_liste,
+                                         data = epoc.oiso.2reg,
+                                         FUN = sum)
+              
+              list.by2region$nb_liste <- 1
+              
+              observateur.by2region <- aggregate(nb_liste ~ Observateur, data=list.by2region,sum)
+              observateur.by2region$part_liste_in_region <- observateur.by2region$nb_liste / sum(observateur.by2region$nb_liste)
+            
+            
+            j <- j + 1
+          }
+          
+          
+          
+          
+          cat(i,"\n")
+          i <- i + 1
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+          
       
 
   # association des ecoregions aux observations
