@@ -467,6 +467,10 @@
             geom_sf(data=bary.reg.sf[bary.reg.sf$`European Atlantic mixed forests` ==TRUE,],aes(colour=as.factor(nb_intersection))) +
             ggtitle("Zoom sur l'écorégion 'European Atlantic mixed forests'\n(Vérification de la bonne localisation des points)")
           
+          
+          
+          
+          
       # Formation des listes communes par région + flag [cas hors frontieres] -----
           # initialisation pour la fonction determination_communs_by_regions
             epoc.oiso$diversite <- 1 # indice du nb d'espece dans la liste
@@ -490,6 +494,11 @@
             i <- i + 1
           }
           
+          
+          
+          
+          
+          
       # Listes communes d'especes + flagging des listes dans des zones tampons de plusieurs écorégions -----
         library(reshape2)
           
@@ -510,7 +519,7 @@
           list.region_l <- inner_join(list.region_l,oiso.reg.all) # tel region -> quelles especes etaient communs/rare ?
         
           list.region.espece <- unique(list.region_l[,c("ID_liste","Nom_espece","Nom_latin","communs")]) # VS flagging communs/rare d'une espece pour une liste de zone tampon
-          #colnames(list.region.espece)[2] <- "Nom_espece_attendu_par_tampon"
+
           
           
       # Selection des listes realisee dans les zones tampons / join avec les informations précédentes et pose des flags par listes/observateur -----
@@ -546,6 +555,10 @@
             list.reg.tampon <- plyr::join(list.reg.tampon,flag.prep.least_1_comm,by="ID_liste")
       
 
+            
+            
+            
+            
         # FLAGGING -----
           # Flag many_rare (Liste a forte diversite [>4 especes] avec que des especes rares)
             list.reg.tampon$flag_many_rare <- 0
