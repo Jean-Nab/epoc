@@ -306,8 +306,8 @@ setwd("C:/git/epoc/data")
   
   # homogeneisation
     # retrait des especes doublons dans les listes du dtf de communautes
-      epoc.oiso2 <- aggregate(Nombre ~ Ref + ID_liste + Observateur + Nom_espece + Nom_latin + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
-      epoc.oiso2 <- epoc.oiso2[order(epoc.oiso2$ID_liste),]
+      epoc.oiso2 <- aggregate(Nombre ~ ID_liste + Observateur + Nom_espece + Nom_latin + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
+      
       epoc.oiso2$Nb_NA <- epoc.oiso2$Nombre - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
   
   
