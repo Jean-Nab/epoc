@@ -30,18 +30,23 @@
       del.juin_jui <- epoc.envi.liste[which(epoc.envi.liste$Mois >= 6),"ID_liste"]
       del.juin_jui1 <- epoc.envi.liste$ID_liste %in% del.juin_jui
       del.juin_jui2 <- epoc.oiso$ID_liste %in% del.juin_jui
+      del.juin_jui3 <- epoc.envi.obs$ID_liste %in% del.juin_jui
       
       epoc.envi.liste <- epoc.envi.liste[which(del.juin_jui1 == FALSE),]
       epoc.oiso <- epoc.oiso[which(del.juin_jui2 == FALSE),]
+      epoc.envi.obs <- epoc.envi.obs[which(del.juin_jui3 == FALSE),]
+      
       
       # - realise en dehors de la periode 5-17h
       del.hour <- epoc.envi.liste[which(epoc.envi.liste$Heure_de_debut < 5 | epoc.envi.liste$Heure_de_debut > 17),"ID_liste"]
       del.hour1 <- epoc.envi.liste$ID_liste %in% del.hour
       del.hour2 <- epoc.oiso$ID_liste %in% del.hour
+      del.hour3 <- epoc.envi.obs$ID_liste %in% del.hour
       
       epoc.envi.liste <- epoc.envi.liste[which(del.hour1 == FALSE),]
       epoc.oiso <- epoc.oiso[which(del.hour2 == FALSE),]
-
+      epoc.envi.obs <- epoc.envi.obs[which(del.hour3 == FALSE),]
+      
     # retrait des observations doublons: non triee dans epoc.envi.obs ----
       ref.id <- epoc.envi.obs$Ref %in% epoc.oiso$Ref 
       
@@ -485,69 +490,138 @@
             i <- i + 1
           }
           
-      # Listes communes d'especes + flagging des listes dans des zones tampons de 2 écorégions -----
-        bary.2reg <- bary.reg[bary.reg$nb_intersection == 2,]
-        
-        i <- 4
-        while(i < ncol(bary.1reg)-1){
+      # Listes communes d'especes + flagging des listes dans des zones tampons de plusieurs écorégions -----
+        library(reshape2)
           
-          j <- i + 1
-          while(j <= ncol(bary.1reg)-1){
-            
-            bary.2reg.tmp <- bary.2reg[,c(1,i,j)]
-            det.intersect.2reg <- which(bary.2reg.tmp[2] == 1 & bary.2reg.tmp[3] == 1)
-            
-            id.list.2reg.tmp <- bary.2reg.tmp[det.intersect.2reg,"ID_liste"]
-            
-            # récupération des observations des listes intersectant le polygone de la colonne i et celui de la colonne j
-              det.list.2reg.epoc.oiso <- epoc.oiso$ID_liste %in% id.list.2reg.tmp
-            
-              epoc.oiso.2reg <- epoc.oiso[det.list.2reg.epoc.oiso,]
-              
-            # formation des dtf de synthese sur les listes et les observateurs de cette zone tampon
-              list.by2region <- aggregate(diversite ~ Observateur + ID_liste,
-                                         data = epoc.oiso.2reg,
-                                         FUN = sum)
-              
-              list.by2region$nb_liste <- 1
-              
-              observateur.by2region <- aggregate(nb_liste ~ Observateur, data=list.by2region,sum)
-              observateur.by2region$part_liste_in_region <- observateur.by2region$nb_liste / sum(observateur.by2region$nb_liste)
+        # formation d'un dtf regroupant les flaggs d'especes (communs/rares) selon les zones tampons des listes
+          vec.reg <- colnames(bary.reg[5:ncol(bary.reg)-1])  # récup' des noms des polygones
+          list.region <- bary.reg[,c("ID_liste",vec.reg)] # formation d'une table ID_liste / présence/absence d'une liste dans une polygone
+          
+          list.region_l <- melt(list.region, id.vars = "ID_liste") # formation d'un long dtf regroupant la variable nom_polygone dans une colonne (-> x5 nb ligne ==> car 5 polygones)
+          colnames(list.region_l)[2:3] <- c("regions","intersect") # rename des var (+ de lisibilité)
             
             
-            j <- j + 1
-          }
+          list.region_l <- subset(list.region_l, intersect == 1) # selection des listes ayant intersecté le polygone (-> liste realise dans zone tampon de 3 polygones ==> 3 lignes)
+          
+          # annexe au code --> globalisation de mes dtf communautes d'oiseaux par polygones
+            oiso.reg.all <- rbind(oiso.reg.Cnmf,oiso.reg.EAmf,oiso.reg.Htsa,oiso.reg.NSaSFMf,oiso.reg.WEbf)
+            
+        # JOIN DES FLAGS COMMUNS/RARES SELON LE/LES POLYGONES DE LA LISTE
+          list.region_l <- inner_join(list.region_l,oiso.reg.all) # tel region -> quelles especes etaient communs/rare ?
+        
+          list.region.espece <- unique(list.region_l[,c("ID_liste","Nom_espece","Nom_latin","communs")]) # VS flagging communs/rare d'une espece pour une liste de zone tampon
+          #colnames(list.region.espece)[2] <- "Nom_espece_attendu_par_tampon"
           
           
+      # Selection des listes realisee dans les zones tampons / join avec les informations précédentes et pose des flags par listes/observateur -----
+        bary.tampon.reg <- bary.reg[bary.reg$nb_intersection != 1,]
+        
+        bary.tampon.reg <- left_join(x=bary.tampon.reg,list.region.espece) # dtf des especes communes/rares attendue par liste (selon la zone tampon)
+        
+        bary.tampon.reg.oiso <- plyr::join(bary.tampon.reg,epoc.oiso[,c("ID_liste","Observateur","Nom_espece","diversite")], by=c("ID_liste","Nom_espece"))
+        
+        # selection uniquement des observations réelles par la liste + maintiens du flag communs/rare par zone tampon
+          bary.tampon.reg.oiso.noNA <- bary.tampon.reg.oiso[which(bary.tampon.reg.oiso$diversite == 1),] 
+        
+        
+          list.reg.tampon <- aggregate(diversite ~ Observateur + ID_liste,
+                                      data = bary.tampon.reg.oiso.noNA,
+                                      FUN = sum)
+        
+        # PREPARATIF du flagging des listes (= calcul part d'espece communes / presence d'au moins une espece communes) -----
+          bary.tampon.reg.oiso.noNA$communs_logical <- as.logical(bary.tampon.reg.oiso.noNA$communs)
+        
+          # flag de la part d'especes communes
+            flag.prep.part.comm <- aggregate(communs ~ ID_liste, data = bary.tampon.reg.oiso.noNA, sum)
+            colnames(flag.prep.part.comm) <- c("ID_liste","nb_communs")
           
-          
-          cat(i,"\n")
-          i <- i + 1
-        }
+          # flag presence d'au moins une espece commune dans la liste
+            flag.prep.least_1_comm <- aggregate(communs_logical ~ ID_liste, data = bary.tampon.reg.oiso.noNA, any)
+            colnames(flag.prep.least_1_comm) <- c("ID_liste","least_1_communs")
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-          
+          # join au dtf (list.reg.tampon + flagging des listes)
+            list.reg.tampon <- plyr::join(list.reg.tampon,flag.prep.part.comm,by="ID_liste")
+            list.reg.tampon$part_communs <- list.reg.tampon$nb_communs / list.reg.tampon$diversite
+            
+            list.reg.tampon <- plyr::join(list.reg.tampon,flag.prep.least_1_comm,by="ID_liste")
       
 
-  # association des ecoregions aux observations
-    test <- epoc.envi.obs_sf[1:50,]
-    test.res <- st_intersects(x=eco.reg,y=test,sparse = F)
-
-
-
+        # FLAGGING -----
+          # Flag many_rare (Liste a forte diversite [>4 especes] avec que des especes rares)
+            list.reg.tampon$flag_many_rare <- 0
+            
+            id.list.rare <- which(list.reg.tampon$diversite >= 4 & list.reg.tampon$least_1_communs == FALSE)
+            list.reg.tampon[id.list.rare,"flag_many_rare"] <- 1   
+            
+          # Flag only_rare_low_dic (Liste de faible diversite [< 4 especes] avec que des especes rares)
+            list.reg.tampon$flag_only_rare_low_div <- 0
+            
+            id.list.rare.low <- which(list.reg.tampon$diversite < 4 & list.reg.tampon$least_1_communs == FALSE)
+            list.reg.tampon[id.list.rare.low,"flag_only_rare_low_div"] <- 1
+            
+          # Flag scarce_communs (part d'especes communes moins importante que l'attendue)
+            list.reg.tampon$flag_scarce_commun <- 0
+            
+            comp.communs <- plyr::join(list.reg.tampon[,c("ID_liste","diversite","part_communs")],tab.qt.global.part,by="diversite")
+            list.emp_th <- comp.communs[which(comp.communs$part_communs <= comp.communs$borne_inf),"ID_liste"]
+            
+            id.list.less.comm <- list.reg.tampon$ID_liste %in% list.emp_th
+            list.reg.tampon[which(id.list.less.comm == TRUE),"flag_scarce_commun"] <- 1
+            
+          # Flag premiere espece rencontree
+            # ajout des categories <=> evaluation de jérémy
+            epoc.oiso.region <- plyr::join(epoc.oiso.region,cate.esp2,by="Nom_espece") # join des categories de rarete experte selon le nom d'espece
+            epoc.oiso.region[which(is.na(epoc.oiso.region$Decision)),"Decision"] <- 1 # cas ou une espece ne serait pas identifie (-> presummer rare)
+            
+            # incrementation -> detection de la 1ere observation de chaque liste
+            epoc.oiso.cate_dt <- data.table(epoc.oiso.region)
+            epoc.oiso.cate_dt <- epoc.oiso.cate_dt[, group_increment := 1:.N, by = "ID_liste"]
+            epoc.oiso.region <- as.data.frame(epoc.oiso.cate_dt)
+            
+            # selection de la 1ere observation de chaque liste
+            first.obs <- which(epoc.oiso.region$group_increment == 1)
+            list.oiso.cate.byregion <- epoc.oiso.region[first.obs,c("ID_liste","Observateur","Nom_espece","Decision","group_increment")]   
+            
+            # add flag communs/rare d'une espece
+            det.list.oiso.cate.communs.byregion <- list.oiso.cate.byregion$Nom_espece %in% champ.oiso.region.communs
+            
+            list.oiso.cate.byregion$communs <- 0
+            list.oiso.cate.byregion[which(det.list.oiso.cate.communs.byregion == TRUE),"communs"] <- 1
+            
+            list.oiso.cate.byregion$flag_first_obs_unusual <- 0
+            list.oiso.cate.byregion[list.oiso.cate.byregion$Decision == 1 | list.oiso.cate.byregion$Decision == 2,"flag_first_obs_unusual"] <- 1
+            list.oiso.cate.byregion[list.oiso.cate.byregion$Decision == 3 & list.oiso.cate.byregion$communs == 0
+                                    ,"flag_first_obs_unusual"] <- 1
+            
+            list.byregion <- plyr::join(list.byregion,list.oiso.cate.byregion[,c("ID_liste","flag_first_obs_unusual")],by="ID_liste")
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
 
 
 
