@@ -32,7 +32,7 @@ determination_communs_by_regions <- function(dtf.reg1){
   # determination des especes communes a partir des champions -----
     det.champ.epoc.oiso.region <- epoc.oiso.region$Observateur %in% select.champ # detection des observations realiser par les champions
     
-    champ.oiso.region <- epoc.oiso[which(det.champ.epoc.oiso.region == TRUE),] # formation du dtf d'observation des champions
+    champ.oiso.region <- epoc.oiso.region[which(det.champ.epoc.oiso.region == TRUE),] # formation du dtf d'observation des champions
     champ.oiso.region <- plyr::count(df=champ.oiso.region,
                                      vars=c("Nom_espece","Nom_latin"))
     
