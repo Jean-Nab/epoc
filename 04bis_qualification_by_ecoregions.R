@@ -514,6 +514,7 @@
           
           # annexe au code --> globalisation de mes dtf communautes d'oiseaux par polygones
             oiso.reg.all <- rbind(oiso.reg.Cnmf,oiso.reg.EAmf,oiso.reg.Htsa,oiso.reg.NSaSFMf,oiso.reg.WEbf)
+            oiso.reg.all <- oiso.reg.all[oiso.reg.all$communs == 1,] # selection des especes qualifiees comme communes
             
         # JOIN DES FLAGS COMMUNS/RARES SELON LE/LES POLYGONES DE LA LISTE
           list.region_l <- inner_join(list.region_l,oiso.reg.all) # tel region -> quelles especes etaient communs/rare ?
@@ -522,30 +523,40 @@
 
           
           
+          
       # Selection des listes realisee dans les zones tampons / join avec les informations précédentes et pose des flags par listes/observateur -----
-        bary.tampon.reg <- bary.reg[bary.reg$nb_intersection != 1,]
-        
-        bary.tampon.reg <- left_join(x=bary.tampon.reg,list.region.espece) # dtf des especes communes/rares attendue par liste (selon la zone tampon)
-        
-        bary.tampon.reg.oiso <- plyr::join(bary.tampon.reg,epoc.oiso[,c("ID_liste","Observateur","Nom_espece","diversite")], by=c("ID_liste","Nom_espece"))
-        
-        # selection uniquement des observations réelles par la liste + maintiens du flag communs/rare par zone tampon
-          bary.tampon.reg.oiso.noNA <- bary.tampon.reg.oiso[which(bary.tampon.reg.oiso$diversite == 1),] 
-        
-        
+          bary.tampon.reg <- bary.reg[bary.reg$nb_intersection != 1,"ID_liste"]
+          
+          det.list.oiso.tampon <- epoc.oiso$ID_liste %in% bary.tampon.reg
+          
+          epoc.oiso.tampon <- epoc.oiso[det.list.oiso.tampon,]
+          
+          epoc.oiso.tampon <- left_join(x=epoc.oiso.tampon[,c("ID_liste","Observateur","Nom_espece","Nom_latin")],list.region.espece) # dtf des especes communes/rares attendue par liste (selon la zone tampon)
+          
+          # $communs == NA --> especes non communes observees dans la liste
+            oiso.tampon.NA <- which(is.na(epoc.oiso.tampon$communs))
+            epoc.oiso.tampon[oiso.tampon.NA,"communs"] <- 0
+          
+          
+          epoc.oiso.tampon$diversite <- 1 # ajout d'une colonne pour calculer le nb d'espece vues dans une liste  
+          
+        # Formation du dtf regroupant les flags par listes
           list.reg.tampon <- aggregate(diversite ~ Observateur + ID_liste,
-                                      data = bary.tampon.reg.oiso.noNA,
+                                      data = epoc.oiso.tampon,
                                       FUN = sum)
+          
+          
+          
         
         # PREPARATIF du flagging des listes (= calcul part d'espece communes / presence d'au moins une espece communes) -----
-          bary.tampon.reg.oiso.noNA$communs_logical <- as.logical(bary.tampon.reg.oiso.noNA$communs)
+          epoc.oiso.tampon$communs_logical <- as.logical(epoc.oiso.tampon$communs)
         
           # flag de la part d'especes communes
-            flag.prep.part.comm <- aggregate(communs ~ ID_liste, data = bary.tampon.reg.oiso.noNA, sum)
+            flag.prep.part.comm <- aggregate(communs ~ ID_liste, data = epoc.oiso.tampon, sum)
             colnames(flag.prep.part.comm) <- c("ID_liste","nb_communs")
           
           # flag presence d'au moins une espece commune dans la liste
-            flag.prep.least_1_comm <- aggregate(communs_logical ~ ID_liste, data = bary.tampon.reg.oiso.noNA, any)
+            flag.prep.least_1_comm <- aggregate(communs_logical ~ ID_liste, data = epoc.oiso.tampon, any)
             colnames(flag.prep.least_1_comm) <- c("ID_liste","least_1_communs")
         
           # join au dtf (list.reg.tampon + flagging des listes)
@@ -553,8 +564,6 @@
             list.reg.tampon$part_communs <- list.reg.tampon$nb_communs / list.reg.tampon$diversite
             
             list.reg.tampon <- plyr::join(list.reg.tampon,flag.prep.least_1_comm,by="ID_liste")
-      
-
             
             
             
@@ -581,40 +590,51 @@
             id.list.less.comm <- list.reg.tampon$ID_liste %in% list.emp_th
             list.reg.tampon[which(id.list.less.comm == TRUE),"flag_scarce_commun"] <- 1
             
+            
           # Flag premiere espece rencontree
             # ajout des categories <=> evaluation de jérémy
-            epoc.oiso.region <- plyr::join(epoc.oiso.region,cate.esp2,by="Nom_espece") # join des categories de rarete experte selon le nom d'espece
-            epoc.oiso.region[which(is.na(epoc.oiso.region$Decision)),"Decision"] <- 1 # cas ou une espece ne serait pas identifie (-> presummer rare)
-            
+              epoc.oiso.tampon <- plyr::join(epoc.oiso.tampon,cate.esp2,by="Nom_espece") # join des categories de rarete experte selon le nom d'espece
+              epoc.oiso.tampon[which(is.na(epoc.oiso.tampon$Decision)),"Decision"] <- 1 # cas ou une espece ne serait pas identifie (-> presummer rare)
+              
             # incrementation -> detection de la 1ere observation de chaque liste
-            epoc.oiso.cate_dt <- data.table(epoc.oiso.region)
-            epoc.oiso.cate_dt <- epoc.oiso.cate_dt[, group_increment := 1:.N, by = "ID_liste"]
-            epoc.oiso.region <- as.data.frame(epoc.oiso.cate_dt)
+              epoc.oiso.cate_dt <- data.table(epoc.oiso.tampon)
+              epoc.oiso.cate_dt <- epoc.oiso.cate_dt[, group_increment := 1:.N, by = "ID_liste"]
+              epoc.oiso.tampon <- as.data.frame(epoc.oiso.cate_dt)
             
             # selection de la 1ere observation de chaque liste
-            first.obs <- which(epoc.oiso.region$group_increment == 1)
-            list.oiso.cate.byregion <- epoc.oiso.region[first.obs,c("ID_liste","Observateur","Nom_espece","Decision","group_increment")]   
+              first.obs <- which(epoc.oiso.tampon$group_increment == 1)
+              list.oiso.cate.tampon <- epoc.oiso.tampon[first.obs,c("ID_liste","Observateur","Nom_espece","Decision","group_increment","communs")]   
             
-            # add flag communs/rare d'une espece
-            det.list.oiso.cate.communs.byregion <- list.oiso.cate.byregion$Nom_espece %in% champ.oiso.region.communs
-            
-            list.oiso.cate.byregion$communs <- 0
-            list.oiso.cate.byregion[which(det.list.oiso.cate.communs.byregion == TRUE),"communs"] <- 1
-            
-            list.oiso.cate.byregion$flag_first_obs_unusual <- 0
-            list.oiso.cate.byregion[list.oiso.cate.byregion$Decision == 1 | list.oiso.cate.byregion$Decision == 2,"flag_first_obs_unusual"] <- 1
-            list.oiso.cate.byregion[list.oiso.cate.byregion$Decision == 3 & list.oiso.cate.byregion$communs == 0
-                                    ,"flag_first_obs_unusual"] <- 1
-            
-            list.byregion <- plyr::join(list.byregion,list.oiso.cate.byregion[,c("ID_liste","flag_first_obs_unusual")],by="ID_liste")
-            
+            # flagging moduler (espece de categorie 3 flaggees <=> non considere comme communes) 
+              list.oiso.cate.tampon$flag_first_obs_unusual <- 0
+              list.oiso.cate.tampon[list.oiso.cate.tampon$Decision == 2,"flag_first_obs_unusual"] <- 1
+              
+              list.reg.tampon <- plyr::join(list.reg.tampon,list.oiso.cate.tampon[,c("ID_liste","flag_first_obs_unusual")],by="ID_liste")
+              
+          
+        # Rassemblement des flags ----
+          # globalisation( list.flag) des liste et des flags associees  
+            list.flag <- rbind(list.reg.Cnmf,list.reg.EAmf,list.reg.Htsa,list.reg.NSaSFMf,list.reg.WEbf)
+            list.flag <- rbind(list.flag[,-c(grep(pattern = "nb_liste|regions",colnames(list.flag)))],list.reg.tampon)   
             
             
+        # rassemblement sur les observateurs -----
+          list.flag$nb_liste <- 1 # preparation au rassemblement sur les observateurs
+          observateur.flag <- aggregate(cbind(nb_liste,flag_many_rare,flag_only_rare_low_div,flag_scarce_commun,flag_first_obs_unusual) ~ 
+                                          Observateur,
+                                        data=list.flag,
+                                        FUN = sum)
+            
+                      
+          # calcul de la part des listes flaggées
+            observateur.flag$part_many_rare <- observateur.flag$flag_many_rare / observateur.flag$nb_liste
+            observateur.flag$part_only_rare <- observateur.flag$flag_only_rare / observateur.flag$nb_liste
+            observateur.flag$part_scarce_commun <- observateur.flag$flag_scarce_commun / observateur.flag$nb_liste
+            observateur.flag$part_first_obs_unusual <- observateur.flag$flag_first_obs_unusual / observateur.flag$nb_liste
             
             
-            
-            
-            
+        # graphiques repartition des flags selon le nombre d'epoc
+          
             
             
             
