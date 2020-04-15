@@ -634,25 +634,158 @@
             
             
         # graphiques repartition des flags selon le nombre d'epoc
+          #load("C:/git/epoc/qualification_obs_initialisation4.RData") # WARNING : possible variable en conflit pour la partie de code anterieur
+           # preparatif (calcul des lignes rouges + restriction de l'axe des abcisses)
+            detect.champ <-observateur.flag$Observateur %in% name.champ # detection des lignes avec les champions
           
+            max.champ.flag.many.rare <- max(observateur.flag[which(detect.champ == TRUE),"part_many_rare"])
+            max.champ.flag.only.rare <- max(observateur.flag[which(detect.champ == TRUE),"part_only_rare"])
+            max.champ.flag.scarce.communs <- max(observateur.flag[which(detect.champ == TRUE),"part_scarce_commun"])
+            max.champ.flag.first.obs <- max(observateur.flag[which(detect.champ == TRUE),"part_first_obs_unusual"])
+
+            observateur.flag.nochamp <- observateur.flag[which(detect.champ == FALSE),]            
+            
+          # plot graphs ----
+            ggplot(observateur.flag.nochamp,aes(x =nb_liste,y= part_many_rare)) +
+              geom_jitter() + 
+              geom_hline(yintercept = max.champ.flag.many.rare,color="red") +
+              ylab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+              xlab("Nombre d'EPOC") +
+              ggtitle(paste0("Repartition du flag (0 communs, trop de rare) \nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.many.rare))
+            
+            ggplot(observateur.flag.nochamp,aes(x = nb_liste,y= part_only_rare)) +
+              geom_jitter() +
+              geom_hline(yintercept = max.champ.flag.only.rare,color="red") +
+              ylab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+              xlab("Nombre d'EPOC") +
+              ggtitle(paste0("Repartition du flag (0 communs, trop de rare - faible diversité)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.only.rare))
+            
+            ggplot(observateur.flag.nochamp,aes(x = nb_liste,y= part_scarce_commun)) +
+              geom_jitter() + 
+              geom_hline(yintercept = max.champ.flag.scarce.communs,color="red") +
+              ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+              xlab("Nombre d'EPOC") +
+              ggtitle(paste0("Repartition du flag (moins de communs que l'attendu théorique)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.scarce.communs))
+            
+            ggplot(observateur.flag.nochamp,aes(x = nb_liste,y= part_first_obs_unusual)) +
+              geom_jitter() + 
+              geom_hline(yintercept = max.champ.flag.first.obs,color="red") +
+              ylab("Proportion de listes flaggées") +
+              xlab("Nombre d'EPOC") +
+              ggtitle(paste0("Repartition du flag 1ere espece observée inhabituelle (rares ou localisées)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.meta))
+            
+          # plot sommes cumulées ----
+            # flag many rare
+              som.cum.many.rare <- observateur.flag[,c("Observateur","nb_liste","flag_many_rare","part_many_rare")]
+              som.cum.many.rare <- som.cum.many.rare[order(som.cum.many.rare$part_many_rare),]
+              som.cum.many.rare.res <- cumsum(som.cum.many.rare[,c("nb_liste","part_many_rare")])
+              som.cum.many.rare.res$pourcentage <- som.cum.many.rare.res$part_many_rare / max(som.cum.many.rare.res$part_many_rare)
+              seuil.champ.many.rare <- max(cumsum(som.cum.many.rare[which(som.cum.many.rare$Observateur %in% name.champ == TRUE),
+                                                                            c("nb_liste","part_many_rare")])[2]) / max(som.cum.many.rare$part_many_rare)
+              
+              ggplot(som.cum.many.rare.res) +
+                geom_jitter(aes(y=nb_liste,x=pourcentage)) +
+                geom_vline(xintercept = seuil.champ.many.rare,color="red") +
+                ggtitle("Graph : somme cumulée des parts du flag\n(bcp d'esp rare, forte diversite)\nen pourcentage")
+            #ggplot(som.cum.many.rare.res) +
+            #  geom_jitter(aes(y=nb_liste,x=part_many_rare))
+              
+              
+            
+            # flag only rare
+              som.cum.only.rare <- observateur.flag[,c("Observateur","nb_liste","flag_only_rare_low_div","part_only_rare")]
+              som.cum.only.rare <- som.cum.only.rare[order(som.cum.only.rare$part_only_rare),]
+              som.cum.only.rare.res <- cumsum(som.cum.only.rare[,c("nb_liste","part_only_rare")])
+              som.cum.only.rare.res$pourcentage <- som.cum.only.rare.res$part_only_rare / max(som.cum.only.rare.res$part_only_rare)
+              seuil.champ.only.rare <- max(cumsum(som.cum.only.rare[which(som.cum.only.rare$Observateur %in% name.champ == TRUE),
+                                                                    c("nb_liste","part_only_rare")])[2]) / max(som.cum.only.rare$part_only_rare)
+              
+              ggplot(som.cum.only.rare.res) +
+                geom_jitter(aes(y=nb_liste,x=pourcentage)) +
+                geom_vline(xintercept = seuil.champ.only.rare,color="red") +
+                ggtitle("Graph : somme cumulée des parts du flag\n(bcp d'esp rare, forte diversite)\nen pourcentage")
+              
+              
+              
+            # flag scarce commun
+              som.cum.scarce.commun <- observateur.flag[,c("Observateur","nb_liste","flag_scarce_commun","part_scarce_commun")]
+              som.cum.scarce.commun <- som.cum.scarce.commun[order(som.cum.scarce.commun$part_scarce_commun),]
+              som.cum.scarce.commun.res <- cumsum(som.cum.scarce.commun[,c("nb_liste","part_scarce_commun")])
+              som.cum.scarce.commun.res$pourcentage <- som.cum.scarce.commun.res$part_scarce_commun / max(som.cum.scarce.commun.res$part_scarce_commun)
+              seuil.champ.scarce.commun <- max(cumsum(som.cum.scarce.commun[which(som.cum.scarce.commun$Observateur %in% name.champ == TRUE),
+                                                                            c("nb_liste","part_scarce_commun")])[2]) / max(som.cum.scarce.commun.res$part_scarce_commun)
+              
+              
+              ggplot(som.cum.scarce.commun.res) +
+                geom_jitter(aes(y=nb_liste,x=pourcentage)) + 
+                geom_vline(xintercept = seuil.champ.scarce.commun,color="red") +
+                ggtitle("Graph : somme cumulée des parts du flag\n(moins d'especes communes que l'attendue)\nen pourcentage")
+              
+              #ggplot(som.cum.scarce.commun.res) +
+              #  geom_jitter(aes(y=nb_liste,x=part_scarce_commun)) +
+              #  ggtitle("Graph : somme cumulée des parts du flag\n(moins d'especes communes que l'attendue)")
+      
+              
+            # flag first obs unusual
+              som.cum.first.obs <- observateur.flag[,c("Observateur","nb_liste","flag_first_obs_unusual","part_first_obs_unusual")]
+              som.cum.first.obs <- som.cum.first.obs[order(som.cum.first.obs$part_first_obs_unusual),]
+              som.cum.first.obs.res <- cumsum(som.cum.first.obs[,c("nb_liste","part_first_obs_unusual")])
+              som.cum.first.obs.res$pourcentage <- som.cum.first.obs.res$part_first_obs_unusual / max(som.cum.first.obs.res$part_first_obs_unusual)
+              seuil.champ.first.obs <- max(cumsum(som.cum.first.obs[which(som.cum.first.obs$Observateur %in% name.champ == TRUE),
+                                                                            c("nb_liste","part_first_obs_unusual")])[2]) / max(som.cum.first.obs.res$part_first_obs_unusual)
+              
+              
+              ggplot(som.cum.first.obs.res) +
+                geom_jitter(aes(y=nb_liste,x=pourcentage)) + 
+                geom_vline(xintercept = seuil.champ.first.obs,color="red") +
+                ggtitle("Graph : somme cumulée des parts du flag\n(moins d'especes communes que l'attendue)\nen pourcentage")
+              
+              
+              
+              
+    # Sauvegarde 2 ----
+      load("C:/git/epoc/04bis_save2.RData")  
+    # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
+      # calcul de l'expérience (par incrementation) ----
+        # formation de la colonne experience - tri des listes par date de realisation
+          exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
+              
+          i <- 1
+          while(i <= nrow(exp.dtf)){
+                
+            # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+            exp.dtf[i,"date"] <- paste0(exp.dtf[i,"Jour"],"/",exp.dtf[i,"Mois"],"/",exp.dtf[i,"Annee"]," ",exp.dtf[i,"Heure_de_debut"],":",exp.dtf[i,"Minute_de_debut"])
+            
+            cat(i,"/ ",nrow(exp.dtf),"\n")
+            i <- i+1
+          }
+          # formation d'un horaire pouvant etre classé    
+            exp.dtf$date2 <- as.POSIXct(exp.dtf$date , format = "%d/%m/%Y %H:%M")
+            
+            exp.dtf <- exp.dtf[order(exp.dtf$date2),]
+            
+        # attribution de l'experience par incrementation selon les observateurs
+          exp.dtf_dt <- data.table(exp.dtf)
+          exp.dtf_dt <- exp.dtf_dt[, group.increment := 1:.N, by=Observateur]
+          exp.dtf2 <- as.data.frame(exp.dtf_dt) 
+          colnames(exp.dtf2)[ncol(exp.dtf2)] <- "experience_protocole"
+
+        # join au dtf regroupant les flags sur les id de listes
+          list.flag <- plyr::join(list.flag,exp.dtf2[,c("ID_liste","experience_protocole")],by="ID_liste")
+  
+      # Visualisation du comportement des flaags selon l'experience protocole ----
+        # GAMM
+          library(mgcv)
+          flag.many.rare.gamm <- gamm(flag_many_rare ~ s(experience_protocole),
+                                     random = list(Observateur=~1),
+                                     data=list.flag,family = binomial)
+          
+          flag.many.rare.gamm2 <- gam(flag_many_rare ~ s(experience_protocole) +s(Observateur,bs="re"),
+                                    data=list.flag,family = binomial) 
             
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+          flag.many.rare.gam <- gam(flag_many_rare ~ s(experience_protocole),
+                                     data=list.flag,family = binomial) 
             
             
 
