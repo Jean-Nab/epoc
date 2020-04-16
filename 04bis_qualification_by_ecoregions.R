@@ -639,7 +639,7 @@
             observateur.flag$part_first_obs_unusual <- observateur.flag$flag_first_obs_unusual / observateur.flag$nb_liste
             
             
-        # graphiques repartition des flags selon le nombre d'epoc
+        # graphiques repartition des flags selon le nombre d'epoc -----
           #load("C:/git/epoc/qualification_obs_initialisation4.RData") # WARNING : possible variable en conflit pour la partie de code anterieur
            # preparatif (calcul des lignes rouges + restriction de l'axe des abcisses)
             detect.champ <-observateur.flag$Observateur %in% name.champ # detection des lignes avec les champions
@@ -758,80 +758,114 @@
     # Sauvegarde 2 ----
       load("C:/git/epoc/04bis_save2.RData")  
     # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
-      # calcul de l'expérience (par incrementation) ----
-        # formation de la colonne experience - tri des listes par date de realisation
-          exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
-              
-          i <- 1
-          while(i <= nrow(exp.dtf)){
+        # calcul de l'expérience (par incrementation) ----
+          # formation de la colonne experience - tri des listes par date de realisation
+            exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
                 
-            # formation d'une nouvelle colonne regroupant toutes les informations temporelles
-            exp.dtf[i,"date"] <- paste0(exp.dtf[i,"Jour"],"/",exp.dtf[i,"Mois"],"/",exp.dtf[i,"Annee"]," ",exp.dtf[i,"Heure_de_debut"],":",exp.dtf[i,"Minute_de_debut"])
-            
-            cat(i,"/ ",nrow(exp.dtf),"\n")
-            i <- i+1
-          }
-          # formation d'un horaire pouvant etre classé    
-            exp.dtf$date2 <- as.POSIXct(exp.dtf$date , format = "%d/%m/%Y %H:%M")
-            
-            exp.dtf <- exp.dtf[order(exp.dtf$date2),]
-            
-        # attribution de l'experience par incrementation selon les observateurs
-          exp.dtf_dt <- data.table(exp.dtf)
-          exp.dtf_dt <- exp.dtf_dt[, group.increment := 1:.N, by=Observateur]
-          exp.dtf2 <- as.data.frame(exp.dtf_dt) 
-          colnames(exp.dtf2)[ncol(exp.dtf2)] <- "experience_protocole"
-
-        # join au dtf regroupant les flags sur les id de listes
-          list.flag <- plyr::join(list.flag,exp.dtf2[,c("ID_liste","experience_protocole")],by="ID_liste")
+            i <- 1
+            while(i <= nrow(exp.dtf)){
+                  
+              # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+              exp.dtf[i,"date"] <- paste0(exp.dtf[i,"Jour"],"/",exp.dtf[i,"Mois"],"/",exp.dtf[i,"Annee"]," ",exp.dtf[i,"Heure_de_debut"],":",exp.dtf[i,"Minute_de_debut"])
+              
+              cat(i,"/ ",nrow(exp.dtf),"\n")
+              i <- i+1
+            }
+            # formation d'un horaire pouvant etre classé    
+              exp.dtf$date2 <- as.POSIXct(exp.dtf$date , format = "%d/%m/%Y %H:%M")
+              
+              exp.dtf <- exp.dtf[order(exp.dtf$date2),]
+              
+          # attribution de l'experience par incrementation selon les observateurs
+            exp.dtf_dt <- data.table(exp.dtf)
+            exp.dtf_dt <- exp.dtf_dt[, group.increment := 1:.N, by=Observateur]
+            exp.dtf2 <- as.data.frame(exp.dtf_dt) 
+            colnames(exp.dtf2)[ncol(exp.dtf2)] <- "experience_protocole"
   
-      # Correlation entre les flags -----
-        cor.flag <- cor(observateur.flag[,c("part_many_rare","part_only_rare","part_scarce_commun","part_first_obs_unusual")],
-                         method = "spearman")
-        corrplot::corrplot(cor.flag,method="number")  
-          
-          
-      # Visualisation du comportement des flags selon l'experience protocole ----
-        # GAMM
-          library(mgcv)
-          library(gamm4)
-          library(voxel)
-          
-          flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-          flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-          flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-          flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-           
-          g1 <- plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
-          g2 <- plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
-          g3 <- plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
-          g4 <- plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
-
-          # flag meta
-            flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-            plot(flag.meta.gamm4$gam,main="GAM : flag meta")
-          
-          # visualisation des 4 plots simultanée    
-          library(ggpubr)          
-          ggarrange(g1,g2,g3 + rremove("x.text")
-                   ,g4 + rremove("x.text"))
-
-          par(mfrow=c(2,2))
-          plot(flag.many.rare.gamm4$gam,main="GAM : flag many rare")
-          plot(flag.only.rare.gamm4$gam,main="GAM : flag only rare")
-          plot(flag.scarce.commun.gamm4$gam,main="GAM : flag scarce commun")
-          plot(flag.first.obs.gamm4$gam,main="GAM : flag first obs unusual")
-          
-
-          # sans claude falke
-            list.flag2 <- list.flag[which(list.flag$Observateur %in% "Claude Falke" == FALSE),]
-  
-            flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-            flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-            flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-            flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-            flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+          # join au dtf regroupant les flags sur les id de listes
+            list.flag <- plyr::join(list.flag,exp.dtf2[,c("ID_liste","experience_protocole")],by="ID_liste")
+    
+        # Correlation entre les flags -----
+          cor.flag <- cor(observateur.flag[,c("part_many_rare","part_only_rare","part_scarce_commun","part_first_obs_unusual")],
+                           method = "spearman")
+          corrplot::corrplot(cor.flag,method="number")  
             
+            
+        # Visualisation du comportement des flags selon l'experience protocole ----
+          # GAMM
+            library(mgcv)
+            library(gamm4)
+            library(voxel)
+            
+            flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+            flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+            flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+            flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+             
+            g1 <- plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
+            g2 <- plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
+            g3 <- plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
+            g4 <- plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
+  
+            # flag meta
+              flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+              plot(flag.meta.gamm4$gam,main="GAM : flag meta")
+            
+            # visualisation des 4 plots simultanée    
+            library(ggpubr)          
+            ggarrange(g1,g2,g3 + rremove("x.text")
+                     ,g4 + rremove("x.text"))
+  
+            par(mfrow=c(2,2))
+            plot(flag.many.rare.gamm4$gam,main="GAM : flag many rare")
+            plot(flag.only.rare.gamm4$gam,main="GAM : flag only rare")
+            plot(flag.scarce.commun.gamm4$gam,main="GAM : flag scarce commun")
+            plot(flag.first.obs.gamm4$gam,main="GAM : flag first obs unusual")
+            
+  
+            # sans claude falke
+              list.flag2 <- list.flag[which(list.flag$Observateur %in% "Claude Falke" == FALSE),]
+    
+              flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+              flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+              flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+              flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+              flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+              
+            
+        
+      # "Suspicion" ----
+      # IDEE :
+      # rm des listes flaggées many_rare (impossible) + detection des observateurs de ces listes
+      # si ces observateurs ont des listes flaggées only_rare_low_div (-> rm, car manque de confiance)
+      # formation d'un jeu de données annexes en enlevant leurs listes flaggées scarce/1st obs --> evaluation du poids
+                        
+      # detection des observateurs avec part des listes flaggées "many_rare" superieur au max des champions ----
+        bad.observateur <- as.vector(observateur.flag[which(observateur.flag$part_many_rare > max.champ.flag.many.rare),"Observateur"])     
+        
+        # récuperation de l'ensemble des listes effectue par ces observateurs
+          det.list.flag.bad.observateur <- list.flag$Observateur %in% bad.observateur
+          list.flag.bad.observateur <- list.flag[det.list.flag.bad.observateur,]
+          
+        # detection liste flaggees only_rare_low_div
+          det.list.only.rare.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_only_rare_low_div == 1),"ID_liste"]
+          
+        # detection liste flaggees scarce_commun & 1st_obs_unusual
+          det.list.scarce_first.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_scarce_commun == 1 | list.flag.bad.observateur$flag_first_obs_unusual == 1),"ID_liste"]
+          
+      
+        # Retrait des listes flaggées many_rare (tout observateur confondu)
+          list.flag.clean <- list.flag[which(list.flag$flag_many_rare == 0),]
+          
+        # Retrait des listes flaggées des observateurs suspicieux (part de liste flaggée many_are > aux champions) ----
+          # Pour le flag only_rare_low_div
+            det.flagged.only.bad.observateur <- list.flag.clean$ID_liste %in% det.list.only.rare.bad.observateur  
+            list.flag.clean <- list.flag.clean[which(det.flagged.only.bad.observateur == FALSE),]
+          
+          
+          # Formation d'un 2eme jeu de données dans lequel on retire les listes flaggées scarce/1st_obs des observateurs suspicieux
+            det.flagged.scarce_commun.bad.observateur <- list.flag.clean$ID_liste %in% det.list.scarce_first.bad.observateur
+            list.flag.clean2 <- list.flag.clean[which(det.flagged.scarce_commun.bad.observateur == FALSE),]
           
       # ------    
             
