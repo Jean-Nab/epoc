@@ -854,18 +854,20 @@
           det.list.scarce_first.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_scarce_commun == 1 | list.flag.bad.observateur$flag_first_obs_unusual == 1),"ID_liste"]
           
       
-        # Retrait des listes flaggées many_rare (tout observateur confondu)
-          list.flag.clean <- list.flag[which(list.flag$flag_many_rare == 0),]
+        # Tagging listes flaggées many_rare (tout observateur confondu)
+          list.flag$accepted <- 1
+          list.flag[which(list.flag$flag_many_rare == 1),"accepted"] <- 0
           
-        # Retrait des listes flaggées des observateurs suspicieux (part de liste flaggée many_are > aux champions) ----
+        # Tagging des listes flaggées des observateurs suspicieux (part de liste flaggée many_are > aux champions) ----
+          list.flag$strict <- 1
           # Pour le flag only_rare_low_div
-            det.flagged.only.bad.observateur <- list.flag.clean$ID_liste %in% det.list.only.rare.bad.observateur  
-            list.flag.clean <- list.flag.clean[which(det.flagged.only.bad.observateur == FALSE),]
+            det.flagged.only.bad.observateur <- list.flag$ID_liste %in% det.list.only.rare.bad.observateur  
+            list.flag[which(det.flagged.only.bad.observateur == TRUE),"accepted"] <- 0
           
           
           # Formation d'un 2eme jeu de données dans lequel on retire les listes flaggées scarce/1st_obs des observateurs suspicieux
-            det.flagged.scarce_commun.bad.observateur <- list.flag.clean$ID_liste %in% det.list.scarce_first.bad.observateur
-            list.flag.clean2 <- list.flag.clean[which(det.flagged.scarce_commun.bad.observateur == FALSE),]
+            det.flagged.scarce_commun.bad.observateur <- list.flag$ID_liste %in% det.list.scarce_first.bad.observateur
+            list.flag[which(det.flagged.scarce_commun.bad.observateur == TRUE),"strict"] <- 0
           
       # ------    
             
