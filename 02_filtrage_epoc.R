@@ -294,7 +294,8 @@ setwd("C:/git/epoc/data")
         
 # separation du jeu de donnees en 2 tableaux (var env/localisation et var communautes d'oiseaux) ----
   epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nom_latin","Nombre","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
-  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Jour","Mois","Annee","Jour_de_l_annee",
+        
+  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Nom_espece","Nom_latin","Nombre","Jour","Mois","Annee","Jour_de_l_annee",
                                       "Pentade","Decade","numero_de_la_semaine","Horaire","Heure_debut","Heure_de_debut","Minute_de_debut","Heure_fin","Heure_de_fin",
                                       "Minute_de_fin","Liste_complete","Commentaire_de_la_liste","ID_Lieu_dit","Lieu_dit","Commune","Departement","Code_INSEE","Pays","Type_de_localisation",
                                       "X_Lambert_IIe_m","Y_Lambert_IIe_m","X_Lambert93_m","Y_Lambert93_m","Lat_WGS84","Lon_WGS84","latitude_DMS","longitude_DMS",
@@ -318,6 +319,8 @@ setwd("C:/git/epoc/data")
     write.table(x = epoc.envi.liste, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_liste.txt"),sep="\t",dec=","
                 ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
   
+
+    
       
 # testing ground (not run) ----
         
