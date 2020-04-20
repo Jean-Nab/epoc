@@ -50,9 +50,9 @@
       epoc.envi.obs <- epoc.envi.obs[which(del.hour3 == FALSE),]
       
     # retrait des observations doublons: non triee dans epoc.envi.obs ----
-      ref.id <- epoc.envi.obs$Ref %in% epoc.oiso$Ref 
+      #ref.id <- epoc.envi.obs$Ref %in% epoc.oiso$Ref 
       
-      epoc.envi.obs <- epoc.envi.obs[which(ref.id == TRUE),]
+      #epoc.envi.obs <- epoc.envi.obs[which(ref.id == TRUE),]
 
 
 # Determination des ecoregions ----
@@ -145,7 +145,7 @@
           
           # decompte du nb d'espece dans les listes champions
           # formation du dtf regroupant les especes detectee + le nombre d'occurrence d'observation
-          champ.oiso <- aggregate(Nombre ~ ID_liste + Observateur.x + Nom_espece,data=champ.obs,FUN=sum)
+          champ.oiso <- aggregate(Abondance_brut ~ ID_liste + Observateur.x + Nom_espece.y,data=champ.obs,FUN=sum)
           champ.esp <- plyr::count(champ.oiso$Nom_espece)
           
           colnames(champ.esp) <- c("Nom_espece","count")
@@ -469,8 +469,7 @@
             geom_sf(data=bary.reg.sf[bary.reg.sf$`European Atlantic mixed forests` ==TRUE,],aes(colour=as.factor(nb_intersection))) +
             ggtitle("Zoom sur l'écorégion 'European Atlantic mixed forests'\n(Vérification de la bonne localisation des points)")
           
-          
-          
+
           
           
       # Formation des listes communes par région + flag [cas hors frontieres] -----
@@ -497,8 +496,7 @@
           }
           
           
-          
-          
+
           
           
       # Listes communes d'especes + flagging des listes dans des zones tampons de plusieurs écorégions -----
@@ -754,6 +752,23 @@
               ggpubr::ggarrange(sumc1,sumc2,sumc3,sumc4)
               
               
+    # Ajout des metadonnee aux barycentres ----
+      bary.reg <- plyr::join(bary.reg,epoc.envi.liste[,c("ID_liste","Jour","Mois","Annee","Jour_de_l_annee","Heure_de_debut","Minute_de_debut")],
+                              by="ID_liste")
+      # formation d'un colone date 
+        i <- 1
+        while(i <= nrow(bary.reg)){
+                
+          # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+            bary.reg[i,"date"] <- paste0(bary.reg[i,"Jour"],"/",bary.reg[i,"Mois"],"/",bary.reg[i,"Annee"]," ",bary.reg[i,"Heure_de_debut"],":",bary.reg[i,"Minute_de_debut"])
+                
+          #cat(i,"/ ",nrow(bary.reg),"\n")
+          i <- i+1
+        }
+        
+        bary.reg$date <- as.POSIXct(bary.reg$date , format = "%d/%m/%Y %H:%M")
+        
+              
               
     # Sauvegarde 2 ----
       load("C:/git/epoc/04bis_save2.RData")  
@@ -840,19 +855,19 @@
       # si ces observateurs ont des listes flaggées only_rare_low_div (-> rm, car manque de confiance)
       # formation d'un jeu de données annexes en enlevant leurs listes flaggées scarce/1st obs --> evaluation du poids
                         
-      # detection des observateurs avec part des listes flaggées "many_rare" superieur au max des champions ----
-        bad.observateur <- as.vector(observateur.flag[which(observateur.flag$part_many_rare > max.champ.flag.many.rare),"Observateur"])     
-        
-        # récuperation de l'ensemble des listes effectue par ces observateurs
-          det.list.flag.bad.observateur <- list.flag$Observateur %in% bad.observateur
-          list.flag.bad.observateur <- list.flag[det.list.flag.bad.observateur,]
+        # detection des observateurs avec part des listes flaggées "many_rare" superieur au max des champions ----
+          bad.observateur <- as.vector(observateur.flag[which(observateur.flag$part_many_rare > max.champ.flag.many.rare),"Observateur"])     
           
-        # detection liste flaggees only_rare_low_div
-          det.list.only.rare.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_only_rare_low_div == 1),"ID_liste"]
-          
-        # detection liste flaggees scarce_commun & 1st_obs_unusual
-          det.list.scarce_first.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_scarce_commun == 1 | list.flag.bad.observateur$flag_first_obs_unusual == 1),"ID_liste"]
-          
+          # récuperation de l'ensemble des listes effectue par ces observateurs
+            det.list.flag.bad.observateur <- list.flag$Observateur %in% bad.observateur
+            list.flag.bad.observateur <- list.flag[det.list.flag.bad.observateur,]
+            
+          # detection liste flaggees only_rare_low_div
+            det.list.only.rare.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_only_rare_low_div == 1),"ID_liste"]
+            
+          # detection liste flaggees scarce_commun & 1st_obs_unusual
+            det.list.scarce_first.bad.observateur <- list.flag.bad.observateur[which(list.flag.bad.observateur$flag_scarce_commun == 1 | list.flag.bad.observateur$flag_first_obs_unusual == 1),"ID_liste"]
+            
       
         # Tagging listes flaggées many_rare (tout observateur confondu)
           list.flag$accepted <- 1
