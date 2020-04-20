@@ -311,6 +311,9 @@ setwd("C:/git/epoc/data")
       
       epoc.oiso2$Nb_NA <- epoc.oiso2$Nombre - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
   
+      colnames(epoc.oiso2)[9] <- "Abondance_brut"
+      epoc.oiso2$Abondance <- epoc.oiso2$Abondance_brut - epoc.oiso2$Nb_vol
+      
   
     write.table(x = epoc.oiso2, file = paste0(sub("/data","/output",getwd()),"/epoc_communaute.txt"),sep="\t",dec=","
                 ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
