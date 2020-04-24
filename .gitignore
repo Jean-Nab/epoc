@@ -41,3 +41,5 @@ brouillon4.R
 output_brouillon/liste_espece_faune-france.txt
 brouillon5.R
 brouillon_visu_effort_echan.R
+output_brouillon/list_date.csv
+output_brouillon/list_date.txt
