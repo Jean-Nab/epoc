@@ -884,9 +884,98 @@
             det.flagged.scarce_commun.bad.observateur <- list.flag$ID_liste %in% det.list.scarce_first.bad.observateur
             list.flag[which(det.flagged.scarce_commun.bad.observateur == TRUE),"strict"] <- 0
           
-      # ------    
+    # Analyse exploratoire : Etude des clusters ----
+            library(sqldf)  
+            library(dplyr)
             
-
+            # determination des clusters temporels -----
+            
+            list.date <- loc.list[,c("ID_liste","date","Observateur")]
+            list.date$date_inf <- list.date$date - 30*60
+            list.date$date_sup <- list.date$date + 30*60
+            
+            list_date1 <- list.date      
+            list_date2 <- list.date          
+            
+            list.date <- sqldf("SELECT * FROM list_date1 LEFT JOIN list_date2 ON
+                         list_date2.date >= list_date1.date_inf AND
+                         list_date2.date <= list_date1.date_sup AND
+                         list_date1.ID_liste < list_date2.ID_liste")
+            
+            # donner plus de sens au nom de la table join 
+            colnames(list.date) <- c("ID_liste_1","date_1","Observateur_1","date_inf_1","date_sup_1",
+                                     "ID_liste_2","date_2","Observateur_2","date_inf_2","date_sup_2")   
+            
+            # flag des listes sans cluster temporelle
+            list.date$L1_associated_L2 <- 1
+            list.date[which(is.na(list.date$ID_liste_2)),"L1_associated_L2"] <- 0
+            
+            
+            
+            # determination des clusters spatiaux -----
+            # formation d'un table spatial regroupant les barycentres des listes compris dans les clusters spatiaux
+            # recuperation des listes des clusters
+            list.date_v2 <- list.date[which(list.date$L1_associated_L2 == 1),]
+            
+            list.date_table.distance.L1 <- list.date_v2[,c("ID_liste_1","date_1")]
+            list.date_table.distance.L2 <- list.date_v2[,c("ID_liste_2","date_2")]
+            
+            colnames(list.date_table.distance.L1)[1] <- "ID_liste"
+            colnames(list.date_table.distance.L2)[1] <- "ID_liste"
+            
+            # jointure des listes avec leur positionnement gps
+            list.date_table.distance.L1 <- plyr::join(list.date_table.distance.L1,
+                                                      loc.list[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")],
+                                                      by="ID_liste")
+            list.date_table.distance.L2 <- plyr::join(list.date_table.distance.L2,
+                                                      loc.list[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")],
+                                                      by="ID_liste")
+            
+            
+            # conversion en sf
+            list.date_table.distance.L1_sf <- st_as_sf(list.date_table.distance.L1,coords = c("X_barycentre_L93","Y_barycentre_L93"),
+                                                       crs=2154)
+            list.date_table.distance.L2_sf <- st_as_sf(list.date_table.distance.L2,coords = c("X_barycentre_L93","Y_barycentre_L93"),
+                                                       crs=2154)
+            
+            # calcul des distances
+            diff.spatial <- as.numeric(st_distance(list.date_table.distance.L1_sf,
+                                                   list.date_table.distance.L2_sf,
+                                                   by_element = TRUE))
+            
+            list.date_v2$Difference_spatiale_m <- diff.spatial
+            
+            list.date <- left_join(list.date,list.date_v2[,c("ID_liste_1","ID_liste_2","Difference_spatiale_m")],
+                                   by = c("ID_liste_1","ID_liste_2"))          
+            
+            # flag des listes proche geographiquement
+            list.date$L1_near_L2 <- 0
+            det.near.list <- which(list.date$Difference_spatiale_m <= 300)   # 300m
+            
+            list.date[det.near.list,"L1_near_L2"] <- 1
+            
+            list.date.near <- list.date[which(list.date$L1_near_L2 == 1),]
+      
+            library(igraph)
+            
+            test <- list.date.near[,c("ID_liste_1","ID_liste_2")]
+            
+            gr.test <- graph.data.frame(test)
+            links <- data.frame(id=unique(unlist(test)),group=clusters(gr.test)$membership)
+            test.res <- links[order(links$group),]
+            
+            
+            # visualisation
+              test.agg <- aggregate(id ~ group,
+                                    data=test.res,
+                                    FUN=length) 
+              hist(test.agg$id,nclass=20,
+                   main="Histogramme du nombre de listes par cluster",
+                   xlab="Nb listes par cluster",
+                   ylab="Count")
+            # data supplementaire
+              test.agg2 <- subset(test.agg, id>5)
+              sum(test.agg2$id)
 
 
 
