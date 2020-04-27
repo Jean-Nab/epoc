@@ -770,85 +770,87 @@
         
               
               
-    # Sauvegarde 2 ----
-      load("C:/git/epoc/04bis_save2.RData")  
-    # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
-        # calcul de l'expérience (par incrementation) ----
-          # formation de la colonne experience - tri des listes par date de realisation
-            exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
-                
-            i <- 1
-            while(i <= nrow(exp.dtf)){
+  # Sauvegarde 2 ----
+    load("C:/git/epoc/04bis_save2.RData")  
+    # Not run ---
+      # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
+          # calcul de l'expérience (par incrementation) ----
+            # formation de la colonne experience - tri des listes par date de realisation
+              exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
                   
-              # formation d'une nouvelle colonne regroupant toutes les informations temporelles
-              exp.dtf[i,"date"] <- paste0(exp.dtf[i,"Jour"],"/",exp.dtf[i,"Mois"],"/",exp.dtf[i,"Annee"]," ",exp.dtf[i,"Heure_de_debut"],":",exp.dtf[i,"Minute_de_debut"])
-              
-              cat(i,"/ ",nrow(exp.dtf),"\n")
-              i <- i+1
-            }
-            # formation d'un horaire pouvant etre classé    
-              exp.dtf$date2 <- as.POSIXct(exp.dtf$date , format = "%d/%m/%Y %H:%M")
-              
-              exp.dtf <- exp.dtf[order(exp.dtf$date2),]
-              
-          # attribution de l'experience par incrementation selon les observateurs
-            exp.dtf_dt <- data.table(exp.dtf)
-            exp.dtf_dt <- exp.dtf_dt[, group.increment := 1:.N, by=Observateur]
-            exp.dtf2 <- as.data.frame(exp.dtf_dt) 
-            colnames(exp.dtf2)[ncol(exp.dtf2)] <- "experience_protocole"
-  
-          # join au dtf regroupant les flags sur les id de listes
-            list.flag <- plyr::join(list.flag,exp.dtf2[,c("ID_liste","experience_protocole")],by="ID_liste")
+              i <- 1
+              while(i <= nrow(exp.dtf)){
+                    
+                # formation d'une nouvelle colonne regroupant toutes les informations temporelles
+                exp.dtf[i,"date"] <- paste0(exp.dtf[i,"Jour"],"/",exp.dtf[i,"Mois"],"/",exp.dtf[i,"Annee"]," ",exp.dtf[i,"Heure_de_debut"],":",exp.dtf[i,"Minute_de_debut"])
+                
+                cat(i,"/ ",nrow(exp.dtf),"\n")
+                i <- i+1
+              }
+              # formation d'un horaire pouvant etre classé    
+                exp.dtf$date2 <- as.POSIXct(exp.dtf$date , format = "%d/%m/%Y %H:%M")
+                
+                exp.dtf <- exp.dtf[order(exp.dtf$date2),]
+                
+            # attribution de l'experience par incrementation selon les observateurs
+              exp.dtf_dt <- data.table(exp.dtf)
+              exp.dtf_dt <- exp.dtf_dt[, group.increment := 1:.N, by=Observateur]
+              exp.dtf2 <- as.data.frame(exp.dtf_dt) 
+              colnames(exp.dtf2)[ncol(exp.dtf2)] <- "experience_protocole"
     
-        # Correlation entre les flags -----
-          cor.flag <- cor(observateur.flag[,c("part_many_rare","part_only_rare","part_scarce_commun","part_first_obs_unusual")],
-                           method = "spearman")
-          corrplot::corrplot(cor.flag,method="number")  
-            
-            
-        # Visualisation du comportement des flags selon l'experience protocole ----
-          # GAMM
-            library(mgcv)
-            library(gamm4)
-            library(voxel)
-            
-            flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-            flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-            flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-            flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-             
-            g1 <- plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
-            g2 <- plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
-            g3 <- plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
-            g4 <- plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
-  
-            # flag meta
-              flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-              plot(flag.meta.gamm4$gam,main="GAM : flag meta")
-            
-            # visualisation des 4 plots simultanée    
-            library(ggpubr)          
-            ggarrange(g1,g2,g3 + rremove("x.text")
-                     ,g4 + rremove("x.text"))
-  
-            par(mfrow=c(2,2))
-            plot(flag.many.rare.gamm4$gam,main="GAM : flag many rare")
-            plot(flag.only.rare.gamm4$gam,main="GAM : flag only rare")
-            plot(flag.scarce.commun.gamm4$gam,main="GAM : flag scarce commun")
-            plot(flag.first.obs.gamm4$gam,main="GAM : flag first obs unusual")
-            
-  
-            # sans claude falke
-              list.flag2 <- list.flag[which(list.flag$Observateur %in% "Claude Falke" == FALSE),]
-    
-              flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-              flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-              flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-              flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-              flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+            # join au dtf regroupant les flags sur les id de listes
+              list.flag <- plyr::join(list.flag,exp.dtf2[,c("ID_liste","experience_protocole")],by="ID_liste")
+      
+          # Correlation entre les flags -----
+            cor.flag <- cor(observateur.flag[,c("part_many_rare","part_only_rare","part_scarce_commun","part_first_obs_unusual")],
+                             method = "spearman")
+            corrplot::corrplot(cor.flag,method="number")  
               
-            
-        
+              
+          # Visualisation du comportement des flags selon l'experience protocole ----
+            # GAMM
+              library(mgcv)
+              library(gamm4)
+              library(voxel)
+              
+              flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+              flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+              flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+              flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+               
+              g1 <- plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
+              g2 <- plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
+              g3 <- plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
+              g4 <- plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
+    
+              # flag meta
+                flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+                plot(flag.meta.gamm4$gam,main="GAM : flag meta")
+              
+              # visualisation des 4 plots simultanée    
+              library(ggpubr)          
+              ggarrange(g1,g2,g3 + rremove("x.text")
+                       ,g4 + rremove("x.text"))
+    
+              par(mfrow=c(2,2))
+              plot(flag.many.rare.gamm4$gam,main="GAM : flag many rare")
+              plot(flag.only.rare.gamm4$gam,main="GAM : flag only rare")
+              plot(flag.scarce.commun.gamm4$gam,main="GAM : flag scarce commun")
+              plot(flag.first.obs.gamm4$gam,main="GAM : flag first obs unusual")
+              
+    
+              # sans claude falke
+                list.flag2 <- list.flag[which(list.flag$Observateur %in% "Claude Falke" == FALSE),]
+      
+                flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                
+              
+          
+    # Not run (end) ---
       # "Suspicion" ----
       # IDEE :
       # rm des listes flaggées many_rare (impossible) + detection des observateurs de ces listes
@@ -889,7 +891,8 @@
       library(dplyr)
             
         # determination des clusters temporels -----
-              
+          loc.list <- plyr::join(bary.reg,epoc.envi.liste[,c("ID_liste","Observateur","Departement","Maille")],by="ID_liste")    
+            
           list.date <- loc.list[,c("ID_liste","date","Observateur")]
           list.date$date_inf <- list.date$date - 30*60
           list.date$date_sup <- list.date$date + 30*60
@@ -912,7 +915,7 @@
               
               
             
-          # determination des clusters spatiaux -----
+        # determination des clusters spatiaux -----
           # formation d'un table spatial regroupant les barycentres des listes compris dans les clusters spatiaux
           # recuperation des listes des clusters
             list.date_v2 <- list.date[which(list.date$L1_associated_L2 == 1),]
@@ -956,44 +959,62 @@
             
             list.date.near <- list.date[which(list.date$L1_near_L2 == 1),]
       
-          # Analyse cluster ----
+        # Analyse cluster ----
             library(igraph)
             
-            test <- list.date.near[,c("ID_liste_1","ID_liste_2")]
+            clust <- list.date.near[,c("ID_liste_1","ID_liste_2")]
             
-            gr.test <- graph.data.frame(test)
-            links <- data.frame(id=unique(unlist(test)),group=clusters(gr.test)$membership)
-            test.res <- links[order(links$group),]
-            colnames(test.res) <- c("ID_liste","id_cluster")
+            gr.clust <- graph.data.frame(clust)
+            links <- data.frame(id=unique(unlist(clust)),group=clusters(gr.clust)$membership)
+            clust.res <- links[order(links$group),]
+            colnames(clust.res) <- c("ID_liste","id_cluster")
             
             # visualisation
-              test.agg <- aggregate(id ~ group,
-                                    data=test.res,
+              clust.agg <- aggregate(ID_liste ~ id_cluster,
+                                    data=clust.res,
                                     FUN=length) 
-              hist(test.agg$id,nclass=20,
+              hist(clust.agg$ID_liste,nclass=20,
                    main="Histogramme du nombre de listes par cluster",
                    xlab="Nb listes par cluster",
                    ylab="Count")
               
             # data supplementaire
-              test.agg2 <- subset(test.agg, id>5)
-              sum(test.agg2$id)
+              clust.agg2 <- subset(clust.agg, id>5)
+              sum(clust.agg2$id)
 
 
             # ajout de l'id cluster au dtf regourpant les informations sur les listes ----
-              list.flag <- plyr::join(list.flag,test.res,by="ID_liste") # NA -> aucun cluster
+              list.flag <- plyr::join(list.flag,clust.res,by="ID_liste") # NA -> aucun cluster
               
+  # Sauvegarde 3 ----
+    load("C:/git/epoc/04bis_save3.RData") 
+      
+    # Similarite des listes de cluster ? ------
+    # idee : calcul d'un indice de dissimilarite (bray-curtis)
+      library(vegan)
+      library(reshape2)
               
-        # sauvegarde ?
+        clust.id.list <- list.flag[which(!(is.na(list.flag$id_cluster))),"ID_liste"] # selection des listes appartenant a un cluster
+
+        clust.oiso <- epoc.oiso[epoc.oiso$ID_liste %in% clust.id.list,] # recuperation des donnees de communautes
+        clust.oiso <- aggregate(Abondance_brut ~ Nom_espece + Nom_latin + Observateur + ID_liste,
+                                data=clust.oiso,
+                                FUN=sum)  # retrait des doublons            
               
-              
-              
-              
-              
-              
-              
-              
-              
+        clust.oiso.tabl.commu <- dcast(clust.oiso, ID_liste ~ Nom_espece, # formation de la table presence/absence
+                                       fill=0)
+        # manip de la table presence/absence
+          id.tmp <- clust.oiso.tabl.commu$ID_liste # save du vecteur id_liste
+          clust.oiso.tabl.commu[clust.oiso.tabl.commu>0] <- 1 
+          clust.oiso.tabl.commu$ID_liste <- id.tmp 
+          
+          clust.oiso.tabl.commu <- clust.oiso.tabl.commu[1:10,] # sous-echan
+          
+        clust.oiso.dissim <- vegdist(clust.oiso.tabl.commu[2:ncol(clust.oiso.tabl.commu)], method="bray")
+        
+      # insertion des noms d'id_liste dans la matrice de dissimilarite
+        clust.oiso.dissim <- as.matrix(clust.oiso.dissim, labels=TRUE)   
+        colnames(clust.oiso.dissim) <- rownames(clust.oiso.dissim) <- clust.oiso.tabl.commu$ID_liste # necessaire ?
               
               
               
