@@ -979,8 +979,8 @@
                    ylab="Count")
               
             # data supplementaire
-              clust.agg2 <- subset(clust.agg, id>5)
-              sum(clust.agg2$id)
+              clust.agg2 <- subset(clust.agg, ID_liste>5)
+              sum(clust.agg2$ID_liste)
 
 
             # ajout de l'id cluster au dtf regourpant les informations sur les listes ----
