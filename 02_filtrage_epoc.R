@@ -197,8 +197,15 @@ setwd("C:/git/epoc/data")
                 u <- u+1
               }
               
+              
             # Remplissage de la colonne Nb_NA : regroupant le reste des informations de comptage non renseigne dans la colonne details
               epoc.filt6$Nb_NA <- epoc.filt6$Nombre - (epoc.filt6$Nb_pose + epoc.filt6$Nb_vol + epoc.filt6$Nb_audition)
+              
+            # ajout d'une colonne abondance (somme des abondances selon les la colonne details propre au protocole EPOC)
+              # modification du nom de la colonne "nombre"
+                colnames(epoc.filt6)[grep("Nombre",colnames(epoc.filt6))] <- "Abondance_brut"
+              
+              epoc.filt6$Abondance <- epoc.filt6$Abondance_brut - epoc.filt6$Nb_vol
               
             # Enregistrement sur le disque
               write.table(x = epoc.filt6, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_6_court.txt"),sep="\t",dec=","
@@ -293,13 +300,13 @@ setwd("C:/git/epoc/data")
         
         
 # separation du jeu de donnees en 2 tableaux (var env/localisation et var communautes d'oiseaux) ----
-  epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nom_latin","Nombre","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
+  epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nom_latin","Abondance_brut","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
         
-  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Nom_espece","Nom_latin","Nombre","Jour","Mois","Annee","Jour_de_l_annee",
+  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Nom_espece","Nom_latin","Abondance_brut","Abondance","Jour","Mois","Annee","Jour_de_l_annee",
                                       "Pentade","Decade","numero_de_la_semaine","Horaire","Heure_debut","Heure_de_debut","Minute_de_debut","Heure_fin","Heure_de_fin",
                                       "Minute_de_fin","Liste_complete","Commentaire_de_la_liste","ID_Lieu_dit","Lieu_dit","Commune","Departement","Code_INSEE","Pays","Type_de_localisation",
                                       "X_Lambert_IIe_m","Y_Lambert_IIe_m","X_Lambert93_m","Y_Lambert93_m","Lat_WGS84","Lon_WGS84","latitude_DMS","longitude_DMS",
-                                      "Maille","Altitude","Details","Code_atlas","Remarque","Remarque_privee","Nom","Prenom","Observateur","Experience","Tps_ecoute",
+                                      "Maille","Altitude","Details","Code_atlas","Remarque","Remarque_privee","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA","Nom","Prenom","Observateur","Experience","Tps_ecoute",
                                       "Diversite_liste","Abondance_liste","Mention_EPOC")]
   epoc.envi.liste <- which(duplicated(epoc.envi$ID_liste) == FALSE)
   epoc.envi.liste <- epoc.envi[epoc.envi.liste,]
@@ -307,11 +314,10 @@ setwd("C:/git/epoc/data")
   
   # homogeneisation
     # retrait des especes doublons dans les listes du dtf de communautes
-      epoc.oiso2 <- aggregate(Nombre ~ ID_liste + Observateur + Nom_espece + Nom_latin + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
+      epoc.oiso2 <- aggregate(Abondance_brut ~ ID_liste + Observateur + Nom_espece + Nom_latin + Estimation + Nb_pose + Nb_vol + Nb_audition,data=epoc.oiso,FUN=sum)
       
-      epoc.oiso2$Nb_NA <- epoc.oiso2$Nombre - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
+      epoc.oiso2$Nb_NA <- epoc.oiso2$Abondance_brut - (epoc.oiso2$Nb_pose + epoc.oiso2$Nb_vol + epoc.oiso2$Nb_audition)
   
-      colnames(epoc.oiso2)[9] <- "Abondance_brut"
       epoc.oiso2$Abondance <- epoc.oiso2$Abondance_brut - epoc.oiso2$Nb_vol
       
   
