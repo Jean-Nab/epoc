@@ -150,91 +150,81 @@
         colnames(tabl.dist.esp)[grep("3X",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_3"
     
     
-    # récuperation des abondances selon differentes classes de distances (25 ; 100 ; 200 ; 200-1000)
+    # récuperation des abondances selon differentes classes de distances (25 ; 100 ; 200 ; 200-1000) -----
     # récupération par liste uniquement (vs double comptage)
     # IDEE : st_within de buffer autour des barycentres
+        tabl.dist.list_sf <- st_as_sf(tabl.dist.list, 
+                                      coords = c("X_barycentre_L93","Y_barycentre_L93"),
+                                      crs=2154) # dtf w/ barycentre des bonnes listes pour DS 
+        
+        loc.obs.DS <- loc.obs[loc.obs$ID_liste %in% id.list.dist,]      # localisation des obs compatible avec le DS (use de id.list.dist pour selectionner les bonnes listes)
+        loc.obs.DS_sf <- st_as_sf(loc.obs.DS,
+                                  coords = c("X_Lambert93_m","Y_Lambert93_m"),
+                                  crs=2154)
     
+    # boucle sur les listes -----
+      i <- 1
+      while(i <= length(id.list.dist)){
+        
+        # evaluation de la presence de l'observation dans un rayon de 25 m autour du barycentre de la liste
+          obs.in.bary.buff.25 <- st_contains(y = loc.obs.DS_sf[which(loc.obs.DS_sf$ID_liste == id.list.dist[i]),],
+                                             x = st_buffer(tabl.dist.list_sf[which(tabl.dist.list_sf$ID_liste == id.list.dist[i]),],
+                                                           dist = 25),
+                                             sparse = FALSE)
+          loc.obs.DS[which(loc.obs.DS$ID_liste == id.list.dist[i]),"Within_buff_25"] <- as.vector(obs.in.bary.buff.25)
+          
+        # evaluation de la presence de l'observation dans un rayon de 100 m autour du barycentre de la liste
+          obs.in.bary.buff.100 <- st_contains(y = loc.obs.DS_sf[which(loc.obs.DS_sf$ID_liste == id.list.dist[i]),],
+                                             x = st_buffer(tabl.dist.list_sf[which(tabl.dist.list_sf$ID_liste == id.list.dist[i]),],
+                                                           dist = 100),
+                                             sparse = FALSE)
+          loc.obs.DS[which(loc.obs.DS$ID_liste == id.list.dist[i]),"Within_buff_100"] <- as.vector(obs.in.bary.buff.100)
+          
+        # evaluation de la presence de l'observation dans un rayon de 200 m autour du barycentre de la liste
+          obs.in.bary.buff.200 <- st_contains(y = loc.obs.DS_sf[which(loc.obs.DS_sf$ID_liste == id.list.dist[i]),],
+                                             x = st_buffer(tabl.dist.list_sf[which(tabl.dist.list_sf$ID_liste == id.list.dist[i]),],
+                                                           dist = 200),
+                                             sparse = FALSE)
+          loc.obs.DS[which(loc.obs.DS$ID_liste == id.list.dist[i]),"Within_buff_200"] <- as.vector(obs.in.bary.buff.200)
+          
+        # evaluation de la presence de l'observation dans un rayon de 1000 m autour du barycentre de la liste
+          obs.in.bary.buff.1000 <- st_contains(y = loc.obs.DS_sf[which(loc.obs.DS_sf$ID_liste == id.list.dist[i]),],
+                                             x = st_buffer(tabl.dist.list_sf[which(tabl.dist.list_sf$ID_liste == id.list.dist[i]),],
+                                                           dist = 1000),
+                                             sparse = FALSE)
+          loc.obs.DS[which(loc.obs.DS$ID_liste == id.list.dist[i]),"Within_buff_1000"] <- as.vector(obs.in.bary.buff.1000)
+        
+        
+        
+        cat(i,"/",length(id.list.dist),"\n")
+        i <- i +1
+      }
+        
+    # join des indicateurs logique de presence dans les buffer (25;100;200;200+) au dtf epoc.envi.obs.DS
+      epoc.envi.obs.DS <- left_join(epoc.envi.obs.DS,loc.obs.DS[,c("Ref","Within_buff_25","Within_buff_100",
+                                                                   "Within_buff_200","Within_buff_1000")],
+                                    by="Ref")
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  # OBSOLETE -----
-    # upload data / formation de la table de resultats
-      clc <- raster("C:/git/epoc/data/CLC_france_2018_LAEA_ver3_3_categories.tif")
-      
-      tabl.dist.list <- bary.reg[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")]
-      tabl.dist.list_sf <- st_transform(st_as_sf(tabl.dist.list, 
-                                                 coords = c("X_barycentre_L93","Y_barycentre_L93"),
-                                                 crs=2154),
-                                        crs=3035)
-      
-      tabl.dist.list_sf$Categories_habitats <- extract(x = clc,
-                                                      y= tabl.dist.list_sf,
-                                                      along=TRUE)
-      tabl.dist.list <- left_join(tabl.dist.list,st_drop_geometry(tabl.dist.list_sf)[,c("ID_liste","Categories_habitats")])
-      epoc.envi.obs <- left_join(epoc.envi.obs,tabl.dist.list[,c("ID_liste","Categories_habitats")])
+  # sauvegarde 1 -----
+    load("C:/git/epoc/07_save1.R.RData")
 
-
-    # regroupement selon les especes
-      tabl.dist.esp <- aggregate(Distance_observation_m ~ Nom_espece + Nom_latin + Categories_habitats,
-                                  data=epoc.envi.obs,
-                                  FUN=mean)
-      tabl.dist.esp <- tidyr::spread(tabl.dist.esp, Categories_habitats, Distance_observation_m)
+      
+    # calcul de l'abondance observée d'une espece selon la classe de distance et la catégories d'habitats
       
       
       
-      tabl.dist.esp <- aggregate(Distance_observation_m ~ Nom_espece + Nom_latin + Categories_habitats,
-                                 data=epoc.envi.obs,
-                                 quantile, 
-                                 c(0.5,0.95,0.99))
-      tabl.dist.esp <- data.frame(tabl.dist.esp[,1:ncol(tabl.dist.esp)-1],tabl.dist.esp[,ncol(tabl.dist.esp)])
       
       
-
-
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
 
 
 
