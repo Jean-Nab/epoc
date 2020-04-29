@@ -6,6 +6,7 @@
   library(tidyverse)
   library(reshape2)
   library(data.table)
+  library(dplyr)
 
 
 # upload des data ----
@@ -145,7 +146,7 @@
           
           # decompte du nb d'espece dans les listes champions
           # formation du dtf regroupant les especes detectee + le nombre d'occurrence d'observation
-          champ.oiso <- aggregate(Abondance_brut ~ ID_liste + Observateur.x + Nom_espece.y,data=champ.obs,FUN=sum)
+          champ.oiso <- aggregate(Abondance_brut.y ~ ID_liste + Observateur.x + Nom_espece.y,data=champ.obs,FUN=sum)
           champ.esp <- plyr::count(champ.oiso$Nom_espece)
           
           colnames(champ.esp) <- c("Nom_espece","count")
