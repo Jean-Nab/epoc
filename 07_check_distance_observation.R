@@ -266,6 +266,11 @@
           
     # estimation de la probabilité de détection ----
       # load de la fonction R.Lorriliere & R. Julliard ----
+        ##' .. Estimation à partir du ratio entre observation réalisé dans deux classes de distance ..
+        ##' @title Estimation de la probabilité de détection
+        ##' @param propN vecteur numérique du ratio d'abondances observées entre deux classes de distance propN = N[0..x1]/(N[0..x1] + N[x1..x2]) avec x1<x2
+        ##' @param propR la proportion des rayons des deux classes de distances propR = R[0..x1]/R[0..x2] avec x1 < x2
+        ##' @return une estimation de la probablité de detection dans la classe de distance x1..x2
         proba_detec <- function(propN,propR) {
           x <- 1/propN
           min_val <- 1
@@ -273,7 +278,7 @@
           return((x-min_val)/(max_val-min_val))
         }
         
-      # calcul de la proba de detection selon les classes de distances
+      # calcul de la proba de detection selon les classes de distances ----
         class.dist.all$Prob_detection_25_100 <- proba_detec(propN = class.dist.all$Ratio_abondance_25_100,
                                                             propR = 25/100)
         
@@ -283,7 +288,7 @@
         class.dist.all$Prob_detection_200_1000 <- proba_detec(propN = class.dist.all$Ratio_abondance_200_1000,
                                                             propR = 200/1000)
         
-    # Focus sur les oiseaux communs (bcp d'oiseaux w/ fortes variations d'abondance entre les classes de distances)
+    # Focus sur les oiseaux communs (bcp d'oiseaux w/ fortes variations d'abondance entre les classes de distances) ----
       class.dist.all <- left_join(class.dist.all,unique(oiso.reg.all[,c("Nom_espece","Nom_latin","communs")]))
       class.dist.all[is.na(class.dist.all$communs),"communs"] <- 0 
       
