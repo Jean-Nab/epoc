@@ -206,25 +206,93 @@
                                     by="Ref")
     
   # sauvegarde 1 -----
-    load("C:/git/epoc/07_save1.R.RData")
+    load("C:/git/epoc/07_save1.RData")
 
       
-    # calcul de l'abondance observée d'une espece selon la classe de distance et la catégories d'habitats
+    # calcul de l'abondance observée d'une espece selon la classe de distance et la catégories d'habitats -----
+      # determination de l'utilisation de l'abondance observée selon sa présence/absence dans le buffer ----
+        # buffer 25 m 
+          epoc.envi.obs.DS$Abondance_buffer_25_m <- 0
+          obs.in.25.m <- which(epoc.envi.obs.DS$Within_buff_25 == TRUE)      
+          epoc.envi.obs.DS[obs.in.25.m,"Abondance_buffer_25_m"] <- epoc.envi.obs.DS[obs.in.25.m,"Abondance"]      
       
+        # buffer 100 m 
+          epoc.envi.obs.DS$Abondance_buffer_100_m <- 0
+          obs.in.100.m <- which(epoc.envi.obs.DS$Within_buff_100 == TRUE)      
+          epoc.envi.obs.DS[obs.in.100.m,"Abondance_buffer_100_m"] <- epoc.envi.obs.DS[obs.in.100.m,"Abondance"] 
       
+        # buffer 200 m 
+          epoc.envi.obs.DS$Abondance_buffer_200_m <- 0
+          obs.in.200.m <- which(epoc.envi.obs.DS$Within_buff_200 == TRUE)      
+          epoc.envi.obs.DS[obs.in.200.m,"Abondance_buffer_200_m"] <- epoc.envi.obs.DS[obs.in.200.m,"Abondance"] 
       
+        # buffer 1000 m 
+          epoc.envi.obs.DS$Abondance_buffer_1000_m <- 0
+          obs.in.1000.m <- which(epoc.envi.obs.DS$Within_buff_1000 == TRUE)      
+          epoc.envi.obs.DS[obs.in.1000.m,"Abondance_buffer_1000_m"] <- epoc.envi.obs.DS[obs.in.1000.m,"Abondance"] 
       
+      # aggregation selon l'espece et la categorie dde l'habitat -----
+        # 25 m 
+          class.dist.25m <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin + Categories_habitats,
+                                      data= epoc.envi.obs.DS,
+                                      FUN = sum)
+        # 100 m 
+          class.dist.100m <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin + Categories_habitats,
+                                      data= epoc.envi.obs.DS,
+                                      FUN = sum)
+        # 200 m 
+          class.dist.200m <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin + Categories_habitats,
+                                      data= epoc.envi.obs.DS,
+                                      FUN = sum)
+        # 1000 m 
+          class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin + Categories_habitats,
+                                      data= epoc.envi.obs.DS,
+                                      FUN = sum)
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
+        # regroupement sur un dtf
+          class.dist.all <- left_join(class.dist.25m,class.dist.100m)
+          class.dist.all <- left_join(class.dist.all,class.dist.200m)
+          class.dist.all <- left_join(class.dist.all,class.dist.1000m)
 
+      # calcul des ratios d'abondances observés entre 2 classes ----
+        class.dist.all$Ratio_abondance_25_100 <- class.dist.all$Abondance_buffer_25_m / (class.dist.all$Abondance_buffer_25_m + class.dist.all$Abondance_buffer_100_m)
+        class.dist.all$Ratio_abondance_100_200 <- class.dist.all$Abondance_buffer_100_m / (class.dist.all$Abondance_buffer_100_m + class.dist.all$Abondance_buffer_200_m)
+        class.dist.all$Ratio_abondance_200_1000 <- class.dist.all$Abondance_buffer_200_m / (class.dist.all$Abondance_buffer_200_m + class.dist.all$Abondance_buffer_1000_m)
+      
+        # gestion des NAs
+          for(n in grep("Ratio",colnames(class.dist.all))){
+            class.dist.all[is.na(class.dist.all[n]),n] <- 0
+          }
+          
+    # estimation de la probabilité de détection ----
+      # load de la fonction R.Lorriliere & R. Julliard ----
+        proba_detec <- function(propN,propR) {
+          x <- 1/propN
+          min_val <- 1
+          max_val <- 1/(propR^2)
+          return((x-min_val)/(max_val-min_val))
+        }
+        
+      # calcul de la proba de detection selon les classes de distances
+        class.dist.all$Prob_detection_25_100 <- proba_detec(propN = class.dist.all$Ratio_abondance_25_100,
+                                                            propR = 25/100)
+        
+        class.dist.all$Prob_detection_100_200 <- proba_detec(propN = class.dist.all$Ratio_abondance_100_200,
+                                                            propR = 100/200)
+        
+        class.dist.all$Prob_detection_200_1000 <- proba_detec(propN = class.dist.all$Ratio_abondance_200_1000,
+                                                            propR = 200/1000)
+        
+    # Focus sur les oiseaux communs (bcp d'oiseaux w/ fortes variations d'abondance entre les classes de distances)
+      class.dist.all <- left_join(class.dist.all,unique(oiso.reg.all[,c("Nom_espece","Nom_latin","communs")]))
+      class.dist.all[is.na(class.dist.all$communs),"communs"] <- 0 
+      
+      class.dist.all.communs <- subset(class.dist.all,communs == 1) # warning : au especes communes ayant bcp d'observations non compatibles au DS
+        
+        
+        
+        
+        
+        
 
 
