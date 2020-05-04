@@ -66,22 +66,74 @@
   # mesure de la variance selon le type d'habitats lors de l'EPOC -----
     # load de la couche raster
       occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
+    
     # determination de l'habitat de la liste (extract du raster)
       tabl.dist.list <- bary.reg[bary.reg$ID_liste %in% id.list.dist,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")] # selection des listes compatible au DS
+      
+      tabl.dist.list <- left_join(tabl.dist.list,unique(epoc.envi.obs.DS[,c("ID_liste","Departement")])) # add de l'information des departements -> boucle pour l'attribution des categories d'habitats
+      
       tabl.dist.list_sf <- st_transform(st_as_sf(tabl.dist.list, 
                                                  coords = c("X_barycentre_L93","Y_barycentre_L93"),
                                                  crs=2154),
                                         crs=crs(occ.sol)) # conversion en sf selon le crs de la couche occupation des sols
       
-    # extract selon la categorie majoritaire des cellules dans un buffer de 50m autour du barycentre des listes
-      tabl.dist.list_sf$Categories_habitats <- exact_extract(x = occ.sol,
-                                                             y = st_buffer(x = tabl.dist.list_sf, 
-                                                                           dist= 50),
-                                                             fun = "majority")
-    
-      tabl.dist.list <- left_join(tabl.dist.list,st_drop_geometry(tabl.dist.list_sf)[,c("ID_liste","Categories_habitats")])
+    # extract : manipulation des cellules de l'extract ------
       
-      # regroupement des categories d'habitats
+      tabl.dist.list_sf$ID <- c(rep(1:nrow(tabl.dist.list_sf)))
+      
+      beginCluster()
+      tabl.dist.list.cate.habitat <- extract(x = occ.sol, 
+                                             y = st_buffer(tabl.dist.list_sf,
+                                                           dist = 50),
+                                             df=T,
+                                             along=T)
+      endCluster()
+      
+      # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
+        for(i in 1:nrow(tabl.dist.list.cate.habitat)){
+          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 1|| tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 2||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 3|| tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 4){
+            
+            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 1
+          }
+          
+          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 5 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 6 || 
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 7 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 8 ||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 9 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 10 ||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 11 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 12||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 13 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 14||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 15 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 18||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 19 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 20||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 21 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 22||
+             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 23){
+            
+            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 2
+          }
+          
+          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 16 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 17){
+            
+            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 3
+          }
+        }
+      
+ 
+      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>%
+        plyr::count() %>%
+        group_by(ID)
+      
+      max.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>%
+        plyr::count() %>%
+        group_by(ID) %>%
+        summarise(freq = max(freq))
+      
+      tabl.dist.list.cate.habitat2 <- left_join(max.habitat.list,freq.habitat.list)
+      
+      # need de join ça vav des list (tabl.dist.list via ID)
+      
+  # sauvegarde 2 ----
+    load("C:/git/epoc/07_save2.RData")
+      
+      # regroupement des categories d'habitats OBSOLETE
         tabl.dist.list[which(tabl.dist.list$Categories_habitats == 1 |tabl.dist.list$Categories_habitats == 2 |
                                tabl.dist.list$Categories_habitats == 3 |tabl.dist.list$Categories_habitats == 4),"Categories_habitats"] <- 1
       
@@ -255,9 +307,9 @@
           class.dist.all <- left_join(class.dist.all,class.dist.1000m)
 
       # calcul des ratios d'abondances observés entre 2 classes ----
-        class.dist.all$Ratio_abondance_25_100 <- class.dist.all$Abondance_buffer_25_m / (class.dist.all$Abondance_buffer_25_m + class.dist.all$Abondance_buffer_100_m)
-        class.dist.all$Ratio_abondance_100_200 <- class.dist.all$Abondance_buffer_100_m / (class.dist.all$Abondance_buffer_100_m + class.dist.all$Abondance_buffer_200_m)
-        class.dist.all$Ratio_abondance_200_1000 <- class.dist.all$Abondance_buffer_200_m / (class.dist.all$Abondance_buffer_200_m + class.dist.all$Abondance_buffer_1000_m)
+        class.dist.all$Ratio_abondance_25_100 <- class.dist.all$Abondance_buffer_25_m / class.dist.all$Abondance_buffer_100_m
+        class.dist.all$Ratio_abondance_100_200 <- class.dist.all$Abondance_buffer_100_m / class.dist.all$Abondance_buffer_200_m
+        class.dist.all$Ratio_abondance_200_1000 <- class.dist.all$Abondance_buffer_200_m /class.dist.all$Abondance_buffer_1000_m
       
         # gestion des NAs
           for(n in grep("Ratio",colnames(class.dist.all))){
