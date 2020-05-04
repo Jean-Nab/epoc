@@ -117,41 +117,33 @@
         }
       
  
-      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>%
+    # regroupement selon la categories majoritaire observée par buffer
+      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
         plyr::count() %>%
         group_by(ID)
       
-      max.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>%
+      max.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>% # detection de l'habitat majoritaire a chaque buffer (warning : pour les egalite)
         plyr::count() %>%
         group_by(ID) %>%
         summarise(freq = max(freq))
       
       tabl.dist.list.cate.habitat2 <- left_join(max.habitat.list,freq.habitat.list)
+      tabl.dist.list.cate.habitat2 <- tabl.dist.list.cate.habitat2[!(duplicated(tabl.dist.list.cate.habitat2$ID)),] # vs probleme d'egalite (-> legere surrepresentation del'habitat 2, 53 egalites)
       
-      # need de join ça vav des list (tabl.dist.list via ID)
+      colnames(tabl.dist.list.cate.habitat2)[3] <- "Categories_habitats"
+      
+      
+    # join au dtf tabl.dist.list_sf -> informations sur les ID_listes
+      tabl.dist.list_sf <- left_join(tabl.dist.list_sf,tabl.dist.list.cate.habitat2[,c("ID","Categories_habitats")])
+      
+      
+    # join w/ dtf regroupant l'ensemble des informations selon les observations ----
+      epoc.envi.obs.DS <- left_join(epoc.envi.obs.DS,
+                                    st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
       
   # sauvegarde 2 ----
     load("C:/git/epoc/07_save2.RData")
       
-      # regroupement des categories d'habitats OBSOLETE
-        tabl.dist.list[which(tabl.dist.list$Categories_habitats == 1 |tabl.dist.list$Categories_habitats == 2 |
-                               tabl.dist.list$Categories_habitats == 3 |tabl.dist.list$Categories_habitats == 4),"Categories_habitats"] <- 1
-      
-        tabl.dist.list[which(tabl.dist.list$Categories_habitats == 5 |
-                             tabl.dist.list$Categories_habitats == 6 |tabl.dist.list$Categories_habitats == 7 |
-                             tabl.dist.list$Categories_habitats == 8 |tabl.dist.list$Categories_habitats == 9 |
-                             tabl.dist.list$Categories_habitats == 10 |tabl.dist.list$Categories_habitats == 11 |
-                             tabl.dist.list$Categories_habitats == 12 |tabl.dist.list$Categories_habitats == 13|
-                             tabl.dist.list$Categories_habitats == 14 |tabl.dist.list$Categories_habitats == 15 |
-                             tabl.dist.list$Categories_habitats == 18 |tabl.dist.list$Categories_habitats == 19 |
-                             tabl.dist.list$Categories_habitats == 20|tabl.dist.list$Categories_habitats == 21 |
-                             tabl.dist.list$Categories_habitats == 22 |tabl.dist.list$Categories_habitats == 23),"Categories_habitats"] <- 2
-        
-        tabl.dist.list[which(tabl.dist.list$Categories_habitats == 16 |
-                               tabl.dist.list$Categories_habitats == 17),"Categories_habitats"] <- 3
-        
-    # join w/ dtf regroupant l'ensemble des informations selon les observations ----
-      epoc.envi.obs.DS <- left_join(epoc.envi.obs.DS,tabl.dist.list[,c("ID_liste","Categories_habitats")])
       
     # variation distance selon la catégories d'habitats
       epoc.envi.obs.DS$Presence <- c(rep(1,nrow(epoc.envi.obs.DS))) # nvlle colonne pour calculer le nb d'occurence de 'lobservation d'une espece selon l'habitat
