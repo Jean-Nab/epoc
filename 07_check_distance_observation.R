@@ -5,7 +5,7 @@
   library(ggplot2)
   library(dplyr)
   library(raster)
-  library(exactextractr)
+
 
 # load des data
   load("C:/git/epoc/04bis_save3.RData") 
@@ -89,40 +89,22 @@
                                              along=T)
       endCluster()
       
-      # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
-        for(i in 1:nrow(tabl.dist.list.cate.habitat)){
-          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 1|| tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 2||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 3|| tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 4){
-            
-            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 1
-          }
-          
-          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 5 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 6 || 
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 7 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 8 ||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 9 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 10 ||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 11 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 12||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 13 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 14||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 15 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 18||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 19 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 20||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 21 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 22||
-             tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 23){
-            
-            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 2
-          }
-          
-          if(tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 16 || tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] == 17){
-            
-            tabl.dist.list.cate.habitat[i,"OCS_2018_CESBIO"] <- 3
-          }
-        }
+      test.opti <- tabl.dist.list.cate.habitat
       
+      # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
+      
+      tabl.dist.list.cate.habitat$habitats <- ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(1,2,3,4),
+                                                     1, ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(16,17),
+                                                               3,2)
+                                                     )
+
  
     # regroupement selon la categories majoritaire observée par buffer
-      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
+      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat[,c("ID","habitats")],ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
         plyr::count() %>%
         group_by(ID)
       
-      max.habitat.list <- group_by(tabl.dist.list.cate.habitat,ID) %>% # detection de l'habitat majoritaire a chaque buffer (warning : pour les egalite)
+      max.habitat.list <- group_by(tabl.dist.list.cate.habitat[,c("ID","habitats")],ID) %>% # detection de l'habitat majoritaire a chaque buffer (warning : pour les egalite)
         plyr::count() %>%
         group_by(ID) %>%
         summarise(freq = max(freq))
@@ -142,7 +124,7 @@
                                     st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
       
   # sauvegarde 2 ----
-    load("C:/git/epoc/07_save2.RData")
+    load("C:/git/epoc/07_save1.RData")
       
       
     # variation distance selon la catégories d'habitats
@@ -197,10 +179,6 @@
     # récuperation des abondances selon differentes classes de distances (25 ; 100 ; 200 ; 200-1000) -----
     # récupération par liste uniquement (vs double comptage)
     # IDEE : st_within de buffer autour des barycentres
-        tabl.dist.list_sf <- st_as_sf(tabl.dist.list, 
-                                      coords = c("X_barycentre_L93","Y_barycentre_L93"),
-                                      crs=2154) # dtf w/ barycentre des bonnes listes pour DS 
-        
         loc.obs.DS <- loc.obs[loc.obs$ID_liste %in% id.list.dist,]      # localisation des obs compatible avec le DS (use de id.list.dist pour selectionner les bonnes listes)
         loc.obs.DS_sf <- st_as_sf(loc.obs.DS,
                                   coords = c("X_Lambert93_m","Y_Lambert93_m"),
@@ -250,7 +228,7 @@
                                     by="Ref")
     
   # sauvegarde 1 -----
-    load("C:/git/epoc/07_save1.RData")
+    load("C:/git/epoc/07_save2.RData")
 
       
     # calcul de l'abondance observée d'une espece selon la classe de distance et la catégories d'habitats -----
@@ -275,21 +253,22 @@
           obs.in.1000.m <- which(epoc.envi.obs.DS$Within_buff_1000 == TRUE)      
           epoc.envi.obs.DS[obs.in.1000.m,"Abondance_buffer_1000_m"] <- epoc.envi.obs.DS[obs.in.1000.m,"Abondance"] 
       
-      # aggregation selon l'espece et la categorie dde l'habitat -----
+          
+      # aggregation de l'abondance au differentes classes de distance selon l'espece et la categorie de l'habitat par liste -----
         # 25 m 
-          class.dist.25m <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin + Categories_habitats,
+          class.dist.25m <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 100 m 
-          class.dist.100m <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin + Categories_habitats,
+          class.dist.100m <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 200 m 
-          class.dist.200m <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin + Categories_habitats,
+          class.dist.200m <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 1000 m 
-          class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin + Categories_habitats,
+          class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
       
@@ -298,10 +277,11 @@
           class.dist.all <- left_join(class.dist.all,class.dist.200m)
           class.dist.all <- left_join(class.dist.all,class.dist.1000m)
 
+          
       # calcul des ratios d'abondances observés entre 2 classes ----
         class.dist.all$Ratio_abondance_25_100 <- class.dist.all$Abondance_buffer_25_m / class.dist.all$Abondance_buffer_100_m
-        class.dist.all$Ratio_abondance_100_200 <- class.dist.all$Abondance_buffer_100_m / class.dist.all$Abondance_buffer_200_m
-        class.dist.all$Ratio_abondance_200_1000 <- class.dist.all$Abondance_buffer_200_m /class.dist.all$Abondance_buffer_1000_m
+        class.dist.all$Ratio_abondance_25_200 <- class.dist.all$Abondance_buffer_25_m / class.dist.all$Abondance_buffer_200_m
+        class.dist.all$Ratio_abondance_25_1000 <- class.dist.all$Abondance_buffer_25_m /class.dist.all$Abondance_buffer_1000_m
       
         # gestion des NAs
           for(n in grep("Ratio",colnames(class.dist.all))){
@@ -326,22 +306,63 @@
         class.dist.all$Prob_detection_25_100 <- proba_detec(propN = class.dist.all$Ratio_abondance_25_100,
                                                             propR = 25/100)
         
-        class.dist.all$Prob_detection_100_200 <- proba_detec(propN = class.dist.all$Ratio_abondance_100_200,
-                                                            propR = 100/200)
+        class.dist.all$Prob_detection_25_200 <- proba_detec(propN = class.dist.all$Ratio_abondance_25_200,
+                                                            propR = 25/200)
         
-        class.dist.all$Prob_detection_200_1000 <- proba_detec(propN = class.dist.all$Ratio_abondance_200_1000,
-                                                            propR = 200/1000)
+        class.dist.all$Prob_detection_25_1000 <- proba_detec(propN = class.dist.all$Ratio_abondance_25_1000,
+                                                            propR = 25/1000)
         
     # Focus sur les oiseaux communs (bcp d'oiseaux w/ fortes variations d'abondance entre les classes de distances) ----
       class.dist.all <- left_join(class.dist.all,unique(oiso.reg.all[,c("Nom_espece","Nom_latin","communs")]))
       class.dist.all[is.na(class.dist.all$communs),"communs"] <- 0 
       
       class.dist.all.communs <- subset(class.dist.all,communs == 1) # warning : au especes communes ayant bcp d'observations non compatibles au DS
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
         
         
+    # Visualisation variation distance d'observations pas especes/categories d'habitats
+      # test quand i <- 1
+      
+      vec.name <- unique(epoc.envi.obs.DS$Nom_espece)
+      vec.name.pos <- unique(seq(1,length(vec.name),20))
+      
+      count <- 0
+      
+      for(i in vec.name.pos){
+        count <- count + 1
         
+        vec.sp <- as.character(vec.name[i:min((i+19),length(vec.name))])
         
+        j <- ggplot(epoc.envi.obs.DS[epoc.envi.obs.DS$Nom_espece %in% vec.sp,]) +
+          geom_density(aes(x = Distance_observation_m, colour = as.factor(Categories_habitats))) +
+          facet_wrap(.~ Nom_espece,scales="free",ncol=4)
         
-        
+      }
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
 
 
