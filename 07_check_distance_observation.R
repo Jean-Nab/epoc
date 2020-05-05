@@ -173,6 +173,7 @@
         colnames(tabl.dist.esp)[grep("OuvertX",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_Ouvert"
         colnames(tabl.dist.esp)[grep("ForetX",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_Foret"
     
+      tabl.dist.esp$Nb_occ_total <- rowSums(tabl.dist.esp[,(ncol(tabl.dist.esp)-2):ncol(tabl.dist.esp)],na.rm = T)
     
     # récuperation des abondances selon differentes classes de distances (25 ; 100 ; 200 ; 200-1000) -----
     # récupération par liste uniquement (vs double comptage)
@@ -254,19 +255,19 @@
           
       # aggregation de l'abondance au differentes classes de distance selon l'espece et la categorie de l'habitat par liste -----
         # 25 m 
-          class.dist.25m <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
+          class.dist.25m <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 100 m 
-          class.dist.100m <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
+          class.dist.100m <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin  + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 200 m 
-          class.dist.200m <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
+          class.dist.200m <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin  + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
         # 1000 m 
-          class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin + ID_liste + Categories_habitats,
+          class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin  + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
       
@@ -346,16 +347,21 @@
     # Variation de la distance d'observation selon la catégories d'habitats par espece (ttes especes comprises) ------
       epoc.envi.obs.DS$Nom_latin <- as.character(epoc.envi.obs.DS$Nom_latin)
       
-      epoc.envi.obs.DS.graph <- epoc.envi.obs.DS[which(epoc.envi.obs.DS$Distance_observation_m <= 1000),] # retrait des individus observe à plus de 1km
+      # nettoyage des especes/observations pour la representation graphique
+        epoc.envi.obs.DS.graph <- epoc.envi.obs.DS[which(epoc.envi.obs.DS$Distance_observation_m <= 1000),] # retrait des individus observe à plus de 1km
+      
+        sp.for.graph <- as.character(tabl.dist.esp[which(tabl.dist.esp$Nb_occ_total >= 25),"Nom_latin"]) # representation des especes avec au moins 25 occurrences d'observations
+        epoc.envi.obs.DS.graph <- epoc.envi.obs.DS.graph[epoc.envi.obs.DS.graph$Nom_latin %in% sp.for.graph,]
+      
       
       vec.name <- sort(unique(epoc.envi.obs.DS.graph$Nom_latin)) # ordonne les nom latins 
-      vec.name.pos <- sort(unique(seq(1,length(vec.name),20))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+      vec.name.pos <- sort(unique(seq(1,length(vec.name),15))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
       count <- 0 # differenciation des plots 
       
       for(i in vec.name.pos){
         count <- count + 1
         
-        vec.sp <- vec.name[i:min((i+19),length(vec.name))]
+        vec.sp <- vec.name[i:min((i+14),length(vec.name))]
         
         # subset des donnees
           dtf.graph <- subset(epoc.envi.obs.DS.graph, Nom_latin %in% vec.sp)
@@ -364,10 +370,10 @@
           # retirer les especes a faible occurrence d'observation (moins de 3 individus observées)
             dtf.graph.tabl <- plyr::count(dtf.graph$Nom_latin)
             colnames(dtf.graph.tabl) <- c("Nom_latin","count")
-            sp.del <- as.character(dtf.graph.tabl[which(dtf.graph.tabl$count < 3),"Nom_latin"])
+            #sp.del <- as.character(dtf.graph.tabl[which(dtf.graph.tabl$count < 25),"Nom_latin"])
             
-            dtf.graph <- dtf.graph[!(dtf.graph$Nom_latin %in% sp.del),]
-            annot.graph <- annot.graph[!(annot.graph$Nom_latin %in% sp.del),]
+            #dtf.graph <- dtf.graph[!(dtf.graph$Nom_latin %in% sp.del),]
+            #annot.graph <- annot.graph[!(annot.graph$Nom_latin %in% sp.del),]
             
     
         # plot
@@ -377,11 +383,12 @@
             xlab("Distances d'observations des individus (en m)") +
             scale_fill_manual(values = c("red","green4","lightgoldenrod3")) +
             scale_x_continuous(breaks = pretty_breaks()) +
+            xlim(0,1000) +
             geom_text(data=annot.graph,                                         # encadre d'annotations
                       aes(x = Inf, y = Inf, hjust = 1.05, vjust = 1.05,
                           label = Annotation),
                       size=2.5) +
-            facet_wrap(.~ Nom_latin,scales="free",ncol=4)
+            facet_wrap(.~ Nom_latin,scales="free",ncol=3)
         
         # sauvegarde
           ggsave(paste0("C:/git/epoc/output/graphs/",
@@ -390,14 +397,26 @@
       }
       
       
-    # -----
+    # Courbe d'accumulation des abondances en fonction de la distance au barycentre -----
+      # Calcul de la somme cumulée des abondances selon la distance d'observation
+        tabl.somm.cum <- epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m")] %>%
+          arrange(Distance_observation_m) %>%
+          group_by(Categories_habitats,Nom_latin) %>%
+          mutate(Somme_cumulee_habitats = cumsum(Abondance))
         
-
+        tabl.somm.cum <- tabl.somm.cum %>%
+          group_by(Categories_habitats,Nom_latin) %>%
+          mutate(Max_somme_cumulee_habitat = max(Somme_cumulee_habitats))
+      
+        tabl.somm.cum$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum$Somme_cumulee_habitats / 
+                                                               tabl.somm.cum$Max_somme_cumulee_habitat)
       
       
-      
-      
-      
+      tabl.somm.cum$Nom_latin <- as.character(tabl.somm.cum$Nom_latin)  
+        
+      vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
+      vec.name.pos <- sort(unique(seq(1,length(vec.name),10))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+      count <- 0
       
       
       
