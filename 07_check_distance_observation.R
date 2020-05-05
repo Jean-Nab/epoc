@@ -5,7 +5,8 @@
   library(ggplot2)
   library(dplyr)
   library(raster)
-
+  library(scales)
+  
 
 # load des data
   load("C:/git/epoc/04bis_save3.RData") 
@@ -89,15 +90,11 @@
                                              along=T)
       endCluster()
       
-      test.opti <- tabl.dist.list.cate.habitat
-      
       # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
-      
       tabl.dist.list.cate.habitat$habitats <- ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(1,2,3,4),
-                                                     1, ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(16,17),
-                                                               3,2)
+                                                     "Batis", ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(16,17),
+                                                               "Foret","Ouvert")
                                                      )
-
  
     # regroupement selon la categories majoritaire observée par buffer
       freq.habitat.list <- group_by(tabl.dist.list.cate.habitat[,c("ID","habitats")],ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
@@ -112,6 +109,7 @@
       tabl.dist.list.cate.habitat2 <- left_join(max.habitat.list,freq.habitat.list)
       tabl.dist.list.cate.habitat2 <- tabl.dist.list.cate.habitat2[!(duplicated(tabl.dist.list.cate.habitat2$ID)),] # vs probleme d'egalite (-> legere surrepresentation del'habitat 2, 53 egalites)
       
+      # harmonisation
       colnames(tabl.dist.list.cate.habitat2)[3] <- "Categories_habitats"
       
       
@@ -138,9 +136,9 @@
       tabl.dist.esp <- tidyr::spread(tabl.dist.esp, Categories_habitats, Distance_observation_m)
       
       # harmonisation
-        colnames(tabl.dist.esp)[grep("1",colnames(tabl.dist.esp))] <- "Distance_habitat_1_mediane"
-        colnames(tabl.dist.esp)[grep("2",colnames(tabl.dist.esp))] <- "Distance_habitat_2_mediane"
-        colnames(tabl.dist.esp)[grep("3",colnames(tabl.dist.esp))] <- "Distance_habitat_3_mediane"
+        colnames(tabl.dist.esp)[grep("Batis",colnames(tabl.dist.esp))] <- "Distance_mediane_Batis"
+        colnames(tabl.dist.esp)[grep("Ouvert",colnames(tabl.dist.esp))] <- "Distance_mediane_Ouvert"
+        colnames(tabl.dist.esp)[grep("Foret",colnames(tabl.dist.esp))] <- "Distance_mediane_Foret"
         
     # calcul des 95% de la distance observation-observateurs ----
       tabl.dist.esp.95 <- aggregate(Distance_observation_m ~ Nom_espece + Nom_latin + Categories_habitats,
@@ -154,9 +152,9 @@
         tabl.dist.esp <- left_join(tabl.dist.esp,tabl.dist.esp.95)
         
       # harmonisation
-        colnames(tabl.dist.esp)[grep("1X",colnames(tabl.dist.esp))] <- "Distance_habitat_1_95"
-        colnames(tabl.dist.esp)[grep("2X",colnames(tabl.dist.esp))] <- "Distance_habitat_2_95"
-        colnames(tabl.dist.esp)[grep("3X",colnames(tabl.dist.esp))] <- "Distance_habitat_3_95"
+        colnames(tabl.dist.esp)[grep("BatisX",colnames(tabl.dist.esp))] <- "Distance_95_Batis"
+        colnames(tabl.dist.esp)[grep("OuvertX",colnames(tabl.dist.esp))] <- "Distance_95_Ouvert"
+        colnames(tabl.dist.esp)[grep("ForetX",colnames(tabl.dist.esp))] <- "Distance_95_Foret"
       
       
       
@@ -171,9 +169,9 @@
         tabl.dist.esp <- left_join(tabl.dist.esp,tabl.dist.esp.nb.occ)
       
       # harmonisation
-        colnames(tabl.dist.esp)[grep("1X",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_1"
-        colnames(tabl.dist.esp)[grep("2X",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_2"
-        colnames(tabl.dist.esp)[grep("3X",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_3"
+        colnames(tabl.dist.esp)[grep("BatisX",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_Batis"
+        colnames(tabl.dist.esp)[grep("OuvertX",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_Ouvert"
+        colnames(tabl.dist.esp)[grep("ForetX",colnames(tabl.dist.esp))] <- "Nb_occ_habitat_Foret"
     
     
     # récuperation des abondances selon differentes classes de distances (25 ; 100 ; 200 ; 200-1000) -----
@@ -319,36 +317,81 @@
       class.dist.all.communs <- subset(class.dist.all,communs == 1) # warning : au especes communes ayant bcp d'observations non compatibles au DS
       
       
+  # visualisation des données ------
+    # table des annotations (cf. tabl.esp) ------
+      tabl.annot.sp <- tabl.dist.esp[,c("Nom_latin","Nom_espece","Nb_occ_habitat_Batis","Nb_occ_habitat_Ouvert","Nb_occ_habitat_Foret")]
       
+      # Gestion des NAs
+        for(n in grep("occ",colnames(tabl.annot.sp))){
+          tabl.annot.sp[is.na(tabl.annot.sp[n]),n] <- 0
+        }
       
-      
-      
-      
-      
-      
-      
-      
-      
+      i <- 1
+      while(i <= nrow(tabl.annot.sp)){
+        
+        annot.bat <- paste("Nb occ Batis : ",tabl.annot.sp[i,"Nb_occ_habitat_Batis"],sep="")
+        annot.ouv <- paste("Nb occ Ouvert : ",tabl.annot.sp[i,"Nb_occ_habitat_Ouvert"],sep="")
+        annot.for <- paste("Nb occ Foret : ",tabl.annot.sp[i,"Nb_occ_habitat_Foret"],sep="")
+        
+        annot.row <- paste(c(annot.bat,"\n",annot.ouv,"\n",annot.for),collapse = "")
+        
+        tabl.annot.sp[i,"Annotation"] <- annot.row
         
         
-    # Visualisation variation distance d'observations pas especes/categories d'habitats
-      # test quand i <- 1
+        i <- i +1
+        cat(i,"/",nrow(tabl.annot.sp),"\n")
+      }
+
       
-      vec.name <- unique(epoc.envi.obs.DS$Nom_espece)
-      vec.name.pos <- unique(seq(1,length(vec.name),20))
+    # Variation de la distance d'observation selon la catégories d'habitats par espece (ttes especes comprises) ------
+      epoc.envi.obs.DS$Nom_latin <- as.character(epoc.envi.obs.DS$Nom_latin)
       
-      count <- 0
+      epoc.envi.obs.DS.graph <- epoc.envi.obs.DS[which(epoc.envi.obs.DS$Distance_observation_m <= 1000),] # retrait des individus observe à plus de 1km
+      
+      vec.name <- sort(unique(epoc.envi.obs.DS.graph$Nom_latin)) # ordonne les nom latins 
+      vec.name.pos <- sort(unique(seq(1,length(vec.name),20))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+      count <- 0 # differenciation des plots 
       
       for(i in vec.name.pos){
         count <- count + 1
         
-        vec.sp <- as.character(vec.name[i:min((i+19),length(vec.name))])
+        vec.sp <- vec.name[i:min((i+19),length(vec.name))]
         
-        j <- ggplot(epoc.envi.obs.DS[epoc.envi.obs.DS$Nom_espece %in% vec.sp,]) +
-          geom_density(aes(x = Distance_observation_m, colour = as.factor(Categories_habitats))) +
-          facet_wrap(.~ Nom_espece,scales="free",ncol=4)
+        # subset des donnees
+          dtf.graph <- subset(epoc.envi.obs.DS.graph, Nom_latin %in% vec.sp)
+          annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
+          
+          # retirer les especes a faible occurrence d'observation (moins de 3 individus observées)
+            dtf.graph.tabl <- plyr::count(dtf.graph$Nom_latin)
+            colnames(dtf.graph.tabl) <- c("Nom_latin","count")
+            sp.del <- as.character(dtf.graph.tabl[which(dtf.graph.tabl$count < 3),"Nom_latin"])
+            
+            dtf.graph <- dtf.graph[!(dtf.graph$Nom_latin %in% sp.del),]
+            annot.graph <- annot.graph[!(annot.graph$Nom_latin %in% sp.del),]
+            
+    
+        # plot
+          graph.dist <- ggplot(dtf.graph) +
+            geom_density(aes(x = Distance_observation_m,                        # graph de densite
+                             fill = Categories_habitats),alpha=0.45) +
+            xlab("Distances d'observations des individus (en m)") +
+            scale_fill_manual(values = c("red","green4","lightgoldenrod3")) +
+            scale_x_continuous(breaks = pretty_breaks()) +
+            geom_text(data=annot.graph,                                         # encadre d'annotations
+                      aes(x = Inf, y = Inf, hjust = 1.05, vjust = 1.05,
+                          label = Annotation),
+                      size=2.5) +
+            facet_wrap(.~ Nom_latin,scales="free",ncol=4)
         
+        # sauvegarde
+          ggsave(paste0("C:/git/epoc/output/graphs/",
+                        "Variation_distance_espece_",count,".png"),
+                 width = 30, height = 30,units = "cm")
       }
+      
+      
+    # -----
+        
 
       
       
