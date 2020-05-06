@@ -6,6 +6,7 @@
   library(dplyr)
   library(raster)
   library(scales)
+  library(reshape2)
   
 
 # load des data
@@ -381,6 +382,12 @@
                       aes(x = Inf, y = Inf, hjust = 1.05, vjust = 1.05,
                           label = Annotation),
                       size=2.5) +
+            
+            theme(legend.background = element_rect(fill = "ivory2",             # design encadre de legende
+                                                   size = 0.5, 
+                                                   linetype = "solid",
+                                                   colour = "sienna4")) +
+            
             facet_wrap(.~ Nom_latin,scales="free",ncol=3)
         
         # sauvegarde
@@ -391,7 +398,7 @@
       
       
     # Courbe d'accumulation des abondances en fonction de la distance au barycentre -----
-      # Calcul de la somme cumulée des abondances selon la distance d'observation
+      # Calcul de la somme cumulée des abondances selon la distance d'observation ----
         tabl.somm.cum <- subset(epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m","communs")], communs == 1) %>%
           arrange(Distance_observation_m) %>%
           group_by(Categories_habitats,Nom_latin) %>%
@@ -438,16 +445,16 @@
           tabl.intersect.all <- left_join(tabl.intersect.all,tabl.intersect.200.tmp)
           
           
-      # Preparation a la boucle des graphs
+      # Preparation a la boucle des graphs -----
         vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
-        vec.name.pos <- sort(unique(seq(1,length(vec.name),10))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+        vec.name.pos <- sort(unique(seq(1,length(vec.name),12))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
         count <- 0
       
       # boucle des graphs
         for(i in vec.name.pos){
           count <- count + 1
           
-          vec.sp <- vec.name[i:min((i+9),length(vec.name))]
+          vec.sp <- vec.name[i:min((i+11),length(vec.name))]
           
           # subset des donnees
             dtf.graph <- subset(tabl.somm.cum, Nom_latin %in% vec.sp)
@@ -478,6 +485,12 @@
                         aes(x = Inf, y = -Inf, hjust = 1.05, vjust = -0.1,
                             label = Annotation),
                         size=2.5) +
+              
+              theme(legend.background = element_rect(fill = "ivory2",             # design encadre de legende
+                                                     size = 0.5, 
+                                                     linetype = "solid",
+                                                     colour = "sienna4")) +
+              
               facet_wrap(.~ Nom_latin,scales="free",ncol=4)
           
           # sauvegarde
@@ -487,17 +500,69 @@
         }
       
           
+    # Evolution de la proba de detection en fonction du rayon du buffer selon les categories d'habitats ----
+      # Récuperation de l'information a partir du dtf class.dist.all.communs
+        tabl.prob.dist.communs <- class.dist.all.communs[,c(1:3,grep("Prob",colnames(class.dist.all.communs)))]
+          
+        tabl.prob.dist.communs <- melt(tabl.prob.dist.communs, id=c("Nom_latin","Nom_espece","Categories_habitats"))  # conversion du dtf wide --> long (recuperation de la proba de detection par buffer)
+        colnames(tabl.prob.dist.communs)[(ncol(tabl.prob.dist.communs)-1):ncol(tabl.prob.dist.communs)] <- c("Distance_buffer","Estimation_proba_detection")       
+        
+        tabl.prob.dist.communs$Distance_buffer <- ifelse(grepl("1000",tabl.prob.dist.communs$Distance_buffer),
+                                                         1000, ifelse(grepl("200",tabl.prob.dist.communs$Distance_buffer),
+                                                                     200, 100))
+          
+      # Preparation a la boucle des graphs -----
+        vec.name <- sort(unique(tabl.prob.dist.communs$Nom_latin)) # ordonne les nom latins 
+        vec.name.pos <- sort(unique(seq(1,length(vec.name),12))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+        count <- 0
+        
+      # boucle des graphs
+        for(i in vec.name.pos){
+          count <- count + 1
+          
+          vec.sp <- vec.name[i:min((i+11),length(vec.name))]
+          
+          # subset des donnees
+            dtf.graph <- subset(tabl.prob.dist.communs, Nom_latin %in% vec.sp)
+            annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
           
           
+          # plot
+            graph.prob <- ggplot(dtf.graph) +
+              geom_line(aes(x = Distance_buffer,                                 # plot de la ligne
+                            y = Estimation_proba_detection,
+                            colour = Categories_habitats)) +
+              
+              geom_point(aes(x = Distance_buffer,                                # plot des points
+                              y = Estimation_proba_detection,
+                              colour = Categories_habitats,
+                              shape = Categories_habitats),
+                         size = 2.5,
+                         alpha = 0.80) +
+              
+              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +
+              scale_x_continuous(breaks = pretty_breaks()) +
+              
+              xlab("Rayon buffer (en m)") +
+              ylab("Estimation de la probabilité de détection") +
+              
+              geom_text(data=annot.graph,                                         # encadre d'annotations
+                        aes(x = Inf, y = Inf, hjust = 1.05, vjust = 1.05,
+                            label = Annotation),
+                        size=2.5) +
+              
+              theme(legend.background = element_rect(fill = "ivory2",             # design encadre de legende
+                                                     size = 0.5, 
+                                                     linetype = "solid",
+                                                     colour = "sienna4")) +
+              facet_wrap(.~ Nom_latin,scales="free",ncol=4)
+              
+          # sauvegarde
+            ggsave(paste0("C:/git/epoc/output/graphs/",
+                          "Evolution_proba_detection_estimee_espece_communes_",count,".png"),
+                   width = 30, height = 30,units = "cm")
           
-          
-          
-          
-          
-          
-          
-          
-          
+        }
           
           
           
