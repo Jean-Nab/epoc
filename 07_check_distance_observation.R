@@ -226,7 +226,7 @@
                                                                    "Within_buff_200","Within_buff_1000")],
                                     by="Ref")
     
-  # sauvegarde 1 -----
+  # sauvegarde 2 -----
     load("C:/git/epoc/07_save2.RData")
 
       
@@ -349,7 +349,9 @@
       
       # nettoyage des especes/observations pour la representation graphique
         epoc.envi.obs.DS.graph <- epoc.envi.obs.DS[which(epoc.envi.obs.DS$Distance_observation_m <= 1000),] # retrait des individus observe à plus de 1km
-      
+        epoc.envi.obs.DS.graph <- left_join(epoc.envi.obs.DS.graph,class.dist.all[,c("Nom_espece","Nom_latin","communs")])
+        
+        
         sp.for.graph <- as.character(tabl.dist.esp[which(tabl.dist.esp$Nb_occ_total >= 25),"Nom_latin"]) # representation des especes avec au moins 25 occurrences d'observations
         epoc.envi.obs.DS.graph <- epoc.envi.obs.DS.graph[epoc.envi.obs.DS.graph$Nom_latin %in% sp.for.graph,]
       
@@ -367,15 +369,6 @@
           dtf.graph <- subset(epoc.envi.obs.DS.graph, Nom_latin %in% vec.sp)
           annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
           
-          # retirer les especes a faible occurrence d'observation (moins de 3 individus observées)
-            dtf.graph.tabl <- plyr::count(dtf.graph$Nom_latin)
-            colnames(dtf.graph.tabl) <- c("Nom_latin","count")
-            #sp.del <- as.character(dtf.graph.tabl[which(dtf.graph.tabl$count < 25),"Nom_latin"])
-            
-            #dtf.graph <- dtf.graph[!(dtf.graph$Nom_latin %in% sp.del),]
-            #annot.graph <- annot.graph[!(annot.graph$Nom_latin %in% sp.del),]
-            
-    
         # plot
           graph.dist <- ggplot(dtf.graph) +
             geom_density(aes(x = Distance_observation_m,                        # graph de densite
@@ -399,7 +392,7 @@
       
     # Courbe d'accumulation des abondances en fonction de la distance au barycentre -----
       # Calcul de la somme cumulée des abondances selon la distance d'observation
-        tabl.somm.cum <- epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m")] %>%
+        tabl.somm.cum <- subset(epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m","communs")], communs == 1) %>%
           arrange(Distance_observation_m) %>%
           group_by(Categories_habitats,Nom_latin) %>%
           mutate(Somme_cumulee_habitats = cumsum(Abondance))
@@ -411,14 +404,49 @@
         tabl.somm.cum$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum$Somme_cumulee_habitats / 
                                                                tabl.somm.cum$Max_somme_cumulee_habitat)
       
+      # Preparation a la boucle des graphs
+        vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
+        vec.name.pos <- sort(unique(seq(1,length(vec.name),10))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+        count <- 0
       
-      tabl.somm.cum$Nom_latin <- as.character(tabl.somm.cum$Nom_latin)  
-        
-      vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
-      vec.name.pos <- sort(unique(seq(1,length(vec.name),10))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
-      count <- 0
-      
-      
+      # boucle des graphs
+        for(i in vec.name.pos){
+          count <- count + 1
+          
+          vec.sp <- vec.name[i:min((i+9),length(vec.name))]
+          
+          # subset des donnees
+            dtf.graph <- subset(tabl.somm.cum, Nom_latin %in% vec.sp)
+            annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
+          
+          # plot
+            graph.cumu <- ggplot(dtf.graph) +
+              geom_smooth(aes(x = Distance_observation_m,                         # courbes d'accumulation
+                              y = Max_somme_cumulee_habitat_part,
+                              colour = Categories_habitats),
+                          alpha=0.35,
+                          method = "gam",
+                          formula = y ~ s(x)) +
+              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +
+              geom_jitter(aes(x = Distance_observation_m,                         # ajout des points 
+                              y = Max_somme_cumulee_habitat_part,
+                              colour = Categories_habitats,
+                              shape = Categories_habitats),size=0.2) +
+              geom_vline(xintercept = c(25,100,200), linetype = "dashed",         # indication des buffer
+                         color = "grey38" , size = 0.5, alpha = 0.5) +
+              xlab("Distances d'observations des individus (en m)") +
+              ylab("Part de l'abondance observée (en %)") +
+              geom_text(data=annot.graph,                                         # encadre d'annotations
+                        aes(x = Inf, y = -Inf, hjust = 1.05, vjust = -0.1,
+                            label = Annotation),
+                        size=2.5) +
+              facet_wrap(.~ Nom_latin,scales="free",ncol=4)
+          
+          # sauvegarde
+            ggsave(paste0("C:/git/epoc/output/graphs/",
+                          "Courbe_accumulation_espece_communes_",count,".png"),
+                   width = 30, height = 30,units = "cm")
+        }
       
       
       
