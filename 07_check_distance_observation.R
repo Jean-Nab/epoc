@@ -403,7 +403,41 @@
       
         tabl.somm.cum$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum$Somme_cumulee_habitats / 
                                                                tabl.somm.cum$Max_somme_cumulee_habitat)
+        
       
+      # Dtf des intersects ----
+        # 25m
+          tabl.intersect.25.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 25),]
+          tabl.intersect.25.tmp$duplicated <- duplicated(tabl.intersect.25.tmp[,c("Nom_latin","Categories_habitats")])
+          
+          tabl.intersect.25.tmp <- subset(tabl.intersect.25.tmp, duplicated == F)
+          colnames(tabl.intersect.25.tmp)[grep("_part",colnames(tabl.intersect.25.tmp))] <- "Abondance_cumulee_25m_%"
+          
+          tabl.intersect.25.tmp <- tabl.intersect.25.tmp[,c(1,3,5,8)]
+          
+        # 100m
+          tabl.intersect.100.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 100),]
+          tabl.intersect.100.tmp$duplicated <- duplicated(tabl.intersect.100.tmp[,c("Nom_latin","Categories_habitats")])
+          
+          tabl.intersect.100.tmp <- subset(tabl.intersect.100.tmp, duplicated == F)
+          colnames(tabl.intersect.100.tmp)[grep("_part",colnames(tabl.intersect.100.tmp))] <- "Abondance_cumulee_100m_%"
+          
+          tabl.intersect.100.tmp <- tabl.intersect.100.tmp[,c(1,3,5,8)]
+        
+        # 200m
+          tabl.intersect.200.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 200),]
+          tabl.intersect.200.tmp$duplicated <- duplicated(tabl.intersect.200.tmp[,c("Nom_latin","Categories_habitats")])
+          
+          tabl.intersect.200.tmp <- subset(tabl.intersect.200.tmp, duplicated == F)
+          colnames(tabl.intersect.200.tmp)[grep("_part",colnames(tabl.intersect.200.tmp))] <- "Abondance_cumulee_200m_%"
+        
+        tabl.intersect.200.tmp <- tabl.intersect.200.tmp[,c(1,3,5,8)]
+        
+        # join des dtf
+          tabl.intersect.all <- left_join(tabl.intersect.25.tmp,tabl.intersect.100.tmp)
+          tabl.intersect.all <- left_join(tabl.intersect.all,tabl.intersect.200.tmp)
+          
+          
       # Preparation a la boucle des graphs
         vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
         vec.name.pos <- sort(unique(seq(1,length(vec.name),10))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
@@ -419,23 +453,27 @@
             dtf.graph <- subset(tabl.somm.cum, Nom_latin %in% vec.sp)
             annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
           
-          # plot
+          # plot -----
             graph.cumu <- ggplot(dtf.graph) +
-              geom_smooth(aes(x = Distance_observation_m,                         # courbes d'accumulation
+              geom_step(aes(x = Distance_observation_m,                         # courbes d'accumulation
                               y = Max_somme_cumulee_habitat_part,
                               colour = Categories_habitats),
-                          alpha=0.35,
-                          method = "gam",
-                          formula = y ~ s(x)) +
-              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +
-              geom_jitter(aes(x = Distance_observation_m,                         # ajout des points 
-                              y = Max_somme_cumulee_habitat_part,
-                              colour = Categories_habitats,
-                              shape = Categories_habitats),size=0.2) +
+                        direction = "hv",
+                        linetype = 1,
+                        size = 0.75,
+                        alpha= 0.75)+
+        
+              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +  # couleurs des courbes
+
+              
               geom_vline(xintercept = c(25,100,200), linetype = "dashed",         # indication des buffer
                          color = "grey38" , size = 0.5, alpha = 0.5) +
+              geom_hline(yintercept = 100, linetype = "dashed",                   # indication de la limite à 100 %
+                         color = "lightcoral" , size = 1, alpha = 0.35) +
+              
               xlab("Distances d'observations des individus (en m)") +
               ylab("Part de l'abondance observée (en %)") +
+              
               geom_text(data=annot.graph,                                         # encadre d'annotations
                         aes(x = Inf, y = -Inf, hjust = 1.05, vjust = -0.1,
                             label = Annotation),
@@ -448,11 +486,27 @@
                    width = 30, height = 30,units = "cm")
         }
       
-      
-      
-      
-      
-      
-      
-
-
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
