@@ -381,10 +381,10 @@
         sp.for.graph <- as.character(tabl.dist.esp[which(tabl.dist.esp$Nb_occ_total >= 25),"Nom_latin"]) # representation des especes avec au moins 25 occurrences d'observations
         epoc.envi.obs.DS.graph <- epoc.envi.obs.DS.graph[epoc.envi.obs.DS.graph$Nom_latin %in% sp.for.graph,]
       
-      
-      vec.name <- sort(unique(epoc.envi.obs.DS.graph$Nom_latin)) # ordonne les nom latins 
-      vec.name.pos <- sort(unique(seq(1,length(vec.name),15))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
-      count <- 0 # differenciation des plots 
+      # Preparation a la boucle des graphs -----
+        vec.name <- sort(unique(epoc.envi.obs.DS.graph$Nom_latin)) # ordonne les nom latins 
+        vec.name.pos <- sort(unique(seq(1,length(vec.name),15))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
+        count <- 0 # differenciation des plots 
       
       for(i in vec.name.pos){
         count <- count + 1
@@ -487,6 +487,7 @@
           tabl.intersect.all <- left_join(tabl.intersect.25.tmp,tabl.intersect.100.tmp)
           tabl.intersect.all <- left_join(tabl.intersect.all,tabl.intersect.200.tmp)
           
+        write.csv(x = tabl.intersect.all, file="C:/git/epoc/output/Somme_cumulee_intersection_buffer.csv")
           
       # Preparation a la boucle des graphs -----
         vec.name <- sort(unique(tabl.somm.cum$Nom_latin)) # ordonne les nom latins 
