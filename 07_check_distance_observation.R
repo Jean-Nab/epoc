@@ -271,12 +271,37 @@
           class.dist.1000m <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin  + Categories_habitats,
                                       data= epoc.envi.obs.DS,
                                       FUN = sum)
-      
-        # regroupement sur un dtf
-          class.dist.all <- left_join(class.dist.25m,class.dist.100m)
-          class.dist.all <- left_join(class.dist.all,class.dist.200m)
-          class.dist.all <- left_join(class.dist.all,class.dist.1000m)
+          
+      # aggregation de l'abondance sans distinction des categories d'habitats -----
+          class.dist.25m.merged <- aggregate(Abondance_buffer_25_m ~ Nom_espece + Nom_latin,
+                                             data= epoc.envi.obs.DS,
+                                             FUN = sum)
+          # 100 m 
+          class.dist.100m.merged <- aggregate(Abondance_buffer_100_m ~ Nom_espece + Nom_latin,
+                                              data= epoc.envi.obs.DS,
+                                              FUN = sum)
+          # 200 m 
+          class.dist.200m.merged <- aggregate(Abondance_buffer_200_m ~ Nom_espece + Nom_latin,
+                                              data= epoc.envi.obs.DS,
+                                              FUN = sum)
+          # 1000 m 
+          class.dist.1000m.merged <- aggregate(Abondance_buffer_1000_m ~ Nom_espece + Nom_latin,
+                                               data= epoc.envi.obs.DS,
+                                               FUN = sum)
+          
+        # regroupement sur un dtf ----
+          # avec distinction des categories d'habitats
+            class.dist.all <- left_join(class.dist.25m,class.dist.100m)
+            class.dist.all <- left_join(class.dist.all,class.dist.200m)
+            class.dist.all <- left_join(class.dist.all,class.dist.1000m)
+            
+          # sans distinction des categories d'habitats
+            class.dist.all.merged <- left_join(class.dist.25m.merged,class.dist.100m.merged)
+            class.dist.all.merged <- left_join(class.dist.all.merged,class.dist.200m.merged)
+            class.dist.all.merged <- left_join(class.dist.all.merged,class.dist.1000m.merged)
+            class.dist.all.merged$Categories_habitats <- "All"
 
+          class.dist.all <- rbind(class.dist.all,class.dist.all.merged)
           
       # calcul des ratios d'abondances observés entre 2 classes ----
         class.dist.all$Ratio_abondance_25_100 <- class.dist.all$Abondance_buffer_25_m / class.dist.all$Abondance_buffer_100_m
@@ -399,22 +424,40 @@
       
     # Courbe d'accumulation des abondances en fonction de la distance au barycentre -----
       # Calcul de la somme cumulée des abondances selon la distance d'observation ----
-        tabl.somm.cum <- subset(epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m","communs")], communs == 1) %>%
-          arrange(Distance_observation_m) %>%
-          group_by(Categories_habitats,Nom_latin) %>%
-          mutate(Somme_cumulee_habitats = cumsum(Abondance))
+        # en prenant en compte les catégories d'habitats
+          tabl.somm.cum <- subset(epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Categories_habitats","Distance_observation_m","communs")], communs == 1) %>%
+            arrange(Distance_observation_m) %>%
+            group_by(Categories_habitats,Nom_latin) %>%
+            mutate(Somme_cumulee_habitats = cumsum(Abondance))
+          
+          tabl.somm.cum <- tabl.somm.cum %>%
+            group_by(Categories_habitats,Nom_latin) %>%
+            mutate(Max_somme_cumulee_habitat = max(Somme_cumulee_habitats))
         
-        tabl.somm.cum <- tabl.somm.cum %>%
-          group_by(Categories_habitats,Nom_latin) %>%
-          mutate(Max_somme_cumulee_habitat = max(Somme_cumulee_habitats))
-      
-        tabl.somm.cum$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum$Somme_cumulee_habitats / 
-                                                               tabl.somm.cum$Max_somme_cumulee_habitat)
+          tabl.somm.cum$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum$Somme_cumulee_habitats / 
+                                                                 tabl.somm.cum$Max_somme_cumulee_habitat)
+          
+        # sans prendre en compte les catégories d'habitats
+          tabl.somm.cum.merged <- subset(epoc.envi.obs.DS.graph[,c("Nom_latin","Abondance","Distance_observation_m","communs")], communs == 1) %>%
+            arrange(Distance_observation_m) %>%
+            group_by(Nom_latin) %>%
+            mutate(Somme_cumulee_habitats = cumsum(Abondance))
+          
+          tabl.somm.cum.merged <- tabl.somm.cum.merged %>%
+            group_by(Nom_latin) %>%
+            mutate(Max_somme_cumulee_habitat = max(Somme_cumulee_habitats))
+          
+          tabl.somm.cum.merged$Max_somme_cumulee_habitat_part <- 100*(tabl.somm.cum.merged$Somme_cumulee_habitats / 
+                                                                 tabl.somm.cum.merged$Max_somme_cumulee_habitat)
+          tabl.somm.cum.merged$Categories_habitats <- "All"
+          
+        # rbind des 2 ddtfs
+          tabl.somm.cum.all <- rbind(tabl.somm.cum,tabl.somm.cum.merged) # add .all -> change pour le dtf d'intersects
         
       
       # Dtf des intersects ----
         # 25m
-          tabl.intersect.25.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 25),]
+          tabl.intersect.25.tmp <- tabl.somm.cum.all[which(tabl.somm.cum.all$Distance_observation_m >= 25),]
           tabl.intersect.25.tmp$duplicated <- duplicated(tabl.intersect.25.tmp[,c("Nom_latin","Categories_habitats")])
           
           tabl.intersect.25.tmp <- subset(tabl.intersect.25.tmp, duplicated == F)
@@ -423,7 +466,7 @@
           tabl.intersect.25.tmp <- tabl.intersect.25.tmp[,c(1,3,5,8)]
           
         # 100m
-          tabl.intersect.100.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 100),]
+          tabl.intersect.100.tmp <- tabl.somm.cum.all[which(tabl.somm.cum.all$Distance_observation_m >= 100),]
           tabl.intersect.100.tmp$duplicated <- duplicated(tabl.intersect.100.tmp[,c("Nom_latin","Categories_habitats")])
           
           tabl.intersect.100.tmp <- subset(tabl.intersect.100.tmp, duplicated == F)
@@ -432,7 +475,7 @@
           tabl.intersect.100.tmp <- tabl.intersect.100.tmp[,c(1,3,5,8)]
         
         # 200m
-          tabl.intersect.200.tmp <- tabl.somm.cum[which(tabl.somm.cum$Distance_observation_m >= 200),]
+          tabl.intersect.200.tmp <- tabl.somm.cum.all[which(tabl.somm.cum.all$Distance_observation_m >= 200),]
           tabl.intersect.200.tmp$duplicated <- duplicated(tabl.intersect.200.tmp[,c("Nom_latin","Categories_habitats")])
           
           tabl.intersect.200.tmp <- subset(tabl.intersect.200.tmp, duplicated == F)
@@ -450,7 +493,7 @@
         vec.name.pos <- sort(unique(seq(1,length(vec.name),12))) # vecteur de position (formation de groupe de 20 en 20 pour le plot)
         count <- 0
       
-      # boucle des graphs
+      # boucle des graphs ----
         for(i in vec.name.pos){
           count <- count + 1
           
@@ -458,6 +501,7 @@
           
           # subset des donnees
             dtf.graph <- subset(tabl.somm.cum, Nom_latin %in% vec.sp)
+            dtf.graph2 <- subset(tabl.somm.cum.merged, Nom_latin %in% vec.sp)
             annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
           
           # plot -----
@@ -468,9 +512,17 @@
                         direction = "hv",
                         linetype = 1,
                         size = 0.75,
-                        alpha= 0.75)+
+                        alpha= 0.60) +
+              
+              geom_step(data=dtf.graph2,aes(x = Distance_observation_m,                       # courbes d'accumulation
+                                            y = Max_somme_cumulee_habitat_part,
+                                            colour = Categories_habitats),
+                        direction = "hv",
+                        linetype = 4,
+                        size = 0.75,
+                        alpha= 0.5) +
         
-              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +  # couleurs des courbes
+              scale_colour_manual(values = c("magenta2","red","green4","darkgoldenrod3")) +  # couleurs des courbes
 
               
               geom_vline(xintercept = c(25,100,200), linetype = "dashed",         # indication des buffer
@@ -501,7 +553,7 @@
       
           
     # Evolution de la proba de detection en fonction du rayon du buffer selon les categories d'habitats ----
-      # Récuperation de l'information a partir du dtf class.dist.all.communs
+      # Récuperation de l'information a partir du dtf class.dist.all.communs ----
         tabl.prob.dist.communs <- class.dist.all.communs[,c(1:3,grep("Prob",colnames(class.dist.all.communs)))]
           
         tabl.prob.dist.communs <- melt(tabl.prob.dist.communs, id=c("Nom_latin","Nom_espece","Categories_habitats"))  # conversion du dtf wide --> long (recuperation de la proba de detection par buffer)
@@ -531,16 +583,17 @@
             graph.prob <- ggplot(dtf.graph) +
               geom_line(aes(x = Distance_buffer,                                 # plot de la ligne
                             y = Estimation_proba_detection,
-                            colour = Categories_habitats)) +
+                            colour = Categories_habitats),
+                        alpha = 0.75) +
               
               geom_point(aes(x = Distance_buffer,                                # plot des points
                               y = Estimation_proba_detection,
                               colour = Categories_habitats,
                               shape = Categories_habitats),
                          size = 2.5,
-                         alpha = 0.80) +
+                         alpha = 0.75) +
               
-              scale_colour_manual(values = c("red","green4","lightgoldenrod3")) +
+              scale_colour_manual(values = c("magenta2","red","green4","darkgoldenrod3")) +
               scale_x_continuous(breaks = pretty_breaks()) +
               
               xlab("Rayon buffer (en m)") +
