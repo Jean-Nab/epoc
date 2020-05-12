@@ -654,21 +654,21 @@
             flag1 <- ggplot(observateur.flag.nochamp,aes(x =nb_liste,y= part_many_rare)) +
               geom_jitter() + 
               geom_hline(yintercept = max.champ.flag.many.rare,color="red") +
-              ylab("Proportion de listes flaggées : Only rare sp ds listes de plus de 4 espèces") +
+              ylab("Proportion de listes flaggées") +
               xlab("Nombre d'EPOC") +
               ggtitle(paste0("Repartition du flag (0 communs, trop de rare) \nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.many.rare))
             
             flag2 <- ggplot(observateur.flag.nochamp,aes(x = nb_liste,y= part_only_rare)) +
               geom_jitter() +
               geom_hline(yintercept = max.champ.flag.only.rare,color="red") +
-              ylab("Proportion de listes flaggées : Only rare sp dans listes de moins de 4 espèces") +
+              ylab("Proportion de listes flaggées") +
               xlab("Nombre d'EPOC") +
               ggtitle(paste0("Repartition du flag (0 communs, trop de rare - faible diversité)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.only.rare))
             
             flag3 <- ggplot(observateur.flag.nochamp,aes(x = nb_liste,y= part_scarce_commun)) +
               geom_jitter() + 
               geom_hline(yintercept = max.champ.flag.scarce.communs,color="red") +
-              ylab("Proportion de listes flaggées : Moins d'especes communes que l'attendu") +
+              ylab("Proportion de listes flaggées") +
               xlab("Nombre d'EPOC") +
               ggtitle(paste0("Repartition du flag (moins de communs que l'attendu théorique)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.scarce.communs))
             
