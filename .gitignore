@@ -45,3 +45,5 @@ output_brouillon/list_date.csv
 output_brouillon/list_date.txt
 brouillon_visu_effort_echantillonnage.R
 brouillon6.R
+DS/epoc_communaute_DS.csv
+*.csv
