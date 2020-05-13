@@ -481,11 +481,24 @@
           tabl.intersect.200.tmp <- subset(tabl.intersect.200.tmp, duplicated == F)
           colnames(tabl.intersect.200.tmp)[grep("_part",colnames(tabl.intersect.200.tmp))] <- "Abondance_cumulee_200m_%"
         
-        tabl.intersect.200.tmp <- tabl.intersect.200.tmp[,c(1,3,5,8)]
+          tabl.intersect.200.tmp <- tabl.intersect.200.tmp[,c(1,3,5,8)]
         
         # join des dtf
           tabl.intersect.all <- left_join(tabl.intersect.25.tmp,tabl.intersect.100.tmp)
           tabl.intersect.all <- left_join(tabl.intersect.all,tabl.intersect.200.tmp)
+          
+        # Determination distance de prospection de 95% de la population (Somme cumulee - tabl.somm.cum.all --> add result to tabl.intersect.all) -----  
+          tabl.intersect.95.pop <- tabl.somm.cum.all[which(tabl.somm.cum.all$Max_somme_cumulee_habitat_part >= 95),]
+          tabl.intersect.95.pop$duplicated <- duplicated(tabl.intersect.95.pop[,c("Nom_latin","Categories_habitats")])    
+          
+          tabl.intersect.95.pop <- subset(tabl.intersect.95.pop, duplicated == F)
+          colnames(tabl.intersect.95.pop)[grep("observation",colnames(tabl.intersect.95.pop))] <- "Distance_95_prospectee"
+          
+          tabl.intersect.95.pop <- tabl.intersect.95.pop[,c(1,3,4,5,8)]
+          
+          # add des informations a la table d'intersection generale
+            tabl.intersect.all <- left_join(tabl.intersect.all,tabl.intersect.95.pop[,1:(ncol(tabl.intersect.95.pop)-1)])
+          
           
         write.csv(x = tabl.intersect.all, file="C:/git/epoc/output/Somme_cumulee_intersection_buffer.csv")
           
@@ -503,13 +516,13 @@
           # subset des donnees
             dtf.graph <- subset(tabl.somm.cum, Nom_latin %in% vec.sp)
             dtf.graph2 <- subset(tabl.somm.cum.merged, Nom_latin %in% vec.sp)
+            dtf.graph3 <- subset(tabl.intersect.all, Nom_latin %in% vec.sp)
             annot.graph <- subset(tabl.annot.sp, Nom_latin %in% vec.sp)
           
           # plot -----
-            graph.cumu <- ggplot(dtf.graph) +
-              geom_step(aes(x = Distance_observation_m,                         # courbes d'accumulation
-                              y = Max_somme_cumulee_habitat_part,
-                              colour = Categories_habitats),
+            graph.cumu <- ggplot(dtf.graph,aes(x = Distance_observation_m,                         # courbes d'accumulation
+                                               y = Max_somme_cumulee_habitat_part)) +
+              geom_step(aes(colour = Categories_habitats),
                         direction = "hv",
                         linetype = 1,
                         size = 0.75,
@@ -527,9 +540,14 @@
 
               
               geom_vline(xintercept = c(25,100,200), linetype = "dashed",         # indication des buffer
-                         color = "grey38" , size = 0.5, alpha = 0.5) +
+                         color = "grey38" , size = 0.5, alpha = 0.25) +
               geom_hline(yintercept = 100, linetype = "dashed",                   # indication de la limite à 100 %
                          color = "lightcoral" , size = 1, alpha = 0.35) +
+              
+              geom_vline(data=dtf.graph3,aes(xintercept = Distance_95_prospectee,
+                                             colour = Categories_habitats),
+                         size = 0.25,
+                         alpha = 0.75) + # a modif'
               
               xlab("Distances d'observations des individus (en m)") +
               ylab("Part de l'abondance observée (en %)") +
@@ -618,11 +636,46 @@
           
         }
           
-          
-          
-          
-          
-          
+  # sauvegarde 3 -----
+    load("C:/git/epoc/07_save3.RData")       
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
           
           
           
