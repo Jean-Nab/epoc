@@ -639,9 +639,19 @@
   # sauvegarde 3 -----
     load("C:/git/epoc/07_save3.RData")       
 
+  # add de la catégories d'habiats sur la table epoc.envi.obs      
+        epoc.envi.obs <- left_join(epoc.envi.obs,
+                                   st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
         
-        
-        
+  # save des fichiers utile pour DS       
+    write.csv(x = epoc.envi.obs,
+              file = "C:/git/epoc/DS/epoc_environnement_observation_DS.csv")
+    write.csv(x = epoc.envi.liste,
+              file = "C:/git/epoc/DS/epoc_environnement_liste_DS.csv")
+    write.csv(x = epoc.oiso,
+              file = "C:/git/epoc/DS/epoc_communaute_DS.csv")
+    write.csv(x = epoc.oiso,
+              file = "C:/git/epoc/DS/liste_oiseaux_communs_DS.csv")
         
         
         
