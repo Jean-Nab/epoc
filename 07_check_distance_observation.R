@@ -650,7 +650,7 @@
               file = "C:/git/epoc/DS/epoc_environnement_liste_DS.csv")
     write.csv(x = epoc.oiso,
               file = "C:/git/epoc/DS/epoc_communaute_DS.csv")
-    write.csv(x = epoc.oiso,
+    write.csv(x = oiso.reg.all,
               file = "C:/git/epoc/DS/liste_oiseaux_communs_DS.csv")
         
         
