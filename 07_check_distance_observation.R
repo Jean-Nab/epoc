@@ -643,6 +643,19 @@
         epoc.envi.obs <- left_join(epoc.envi.obs,
                                    st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
         
+  # conversion des coordonnes des barycentre en WGS84 (add de l'information)
+    library(rgdal)
+    library(raster)
+        
+    cord.bary.wgs84 <- SpatialPoints(cbind(bary.reg$X_barycentre_L93,bary.reg$Y_barycentre_L93),proj4string = CRS(crs(bary.reg.sf))) # formation d'un spPoints en L93 
+    cord.bary.wgs84 <- spTransform(cord.bary.wgs84,CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs ")) # conversion en wgs84
+        
+    bary.reg <- cbind(bary.reg,cord.bary.wgs84@coords)
+    
+    # harmonisation
+      colnames(bary.reg)[grep("x1",colnames(bary.reg))] <- "Lon_WGS84_bary"
+      colnames(bary.reg)[grep("x2",colnames(bary.reg))] <- "Lat_WGS84_bary"
+    
   # save des fichiers utile pour DS       
     write.csv(x = epoc.envi.obs,
               file = "C:/git/epoc/DS/epoc_environnement_observation_DS.csv")
@@ -652,7 +665,8 @@
               file = "C:/git/epoc/DS/epoc_communaute_DS.csv")
     write.csv(x = oiso.reg.all,
               file = "C:/git/epoc/DS/liste_oiseaux_communs_DS.csv")
-        
+    write.csv(x = bary.reg,
+              file = "C:/git/epoc/DS/epoc_barycentre_liste.csv")
         
         
         
