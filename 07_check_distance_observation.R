@@ -643,7 +643,7 @@
         epoc.envi.obs <- left_join(epoc.envi.obs,
                                    st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
         
-  # conversion des coordonnes des barycentre en WGS84 (add de l'information)
+  # conversion des coordonnes des barycentre en WGS84 (add de l'information) ----
     library(rgdal)
     library(raster)
         
@@ -656,7 +656,7 @@
       colnames(bary.reg)[grep("x1",colnames(bary.reg))] <- "Lon_WGS84_bary"
       colnames(bary.reg)[grep("x2",colnames(bary.reg))] <- "Lat_WGS84_bary"
     
-  # save des fichiers utile pour DS       
+  # save des fichiers utile pour DS ----   
     write.csv(x = epoc.envi.obs,
               file = "C:/git/epoc/DS/epoc_environnement_observation_DS.csv")
     write.csv(x = epoc.envi.liste,
@@ -667,7 +667,8 @@
               file = "C:/git/epoc/DS/liste_oiseaux_communs_DS.csv")
     write.csv(x = bary.reg,
               file = "C:/git/epoc/DS/epoc_barycentre_liste.csv")
-        
+    write.csv(x = tabl.intersect.all,
+              file = "C:/git/epoc/DS/epoc_table_intersection_DS.csv")   
         
         
         
