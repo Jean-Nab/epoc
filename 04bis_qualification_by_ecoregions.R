@@ -773,7 +773,7 @@
               
   # Sauvegarde 2 ----
     load("C:/git/epoc/04bis_save2.RData")  
-    # Not run ---
+    # Not run ----
       # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
           # calcul de l'expérience (par incrementation) ----
             # formation de la colonne experience - tri des listes par date de realisation
