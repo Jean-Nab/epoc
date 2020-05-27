@@ -852,7 +852,7 @@
               
           
     # Not run (end) ---
-      # "Suspicion" ----
+    # "Suspicion" ----
       # IDEE :
       # rm des listes flaggées many_rare (impossible) + detection des observateurs de ces listes
       # si ces observateurs ont des listes flaggées only_rare_low_div (-> rm, car manque de confiance)
