@@ -139,7 +139,8 @@
     
   # formation d'une table presence/absence (-> tableau format wide)
     tabl.communaute <- dcast(tabl.communaute,
-                             ID_liste ~ Nom_latin)
+                             ID_liste ~ Nom_latin,
+                             fill=0)
     
     tabl.communaute$ID <- c(rep(1:nrow(tabl.communaute))) # ajout d'un identifiant de ligne ID pour join
     
@@ -152,7 +153,7 @@
     rm(tabl.communaute.bis)
 
   # sauvegarde ----
-    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_communaute_PA_DS.csv",row.names=F)
+    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_table_communaute_PA_DS.csv",row.names=F)
 
 
 # Ajout de l'information de la densité de l'effort d'echantillonnage, selon la grille STOC ----
