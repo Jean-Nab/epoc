@@ -14,6 +14,8 @@
     epoc.oiso <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_communaute_DS.csv"))
     epoc.envi.liste <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_environnement_liste_DS.csv"))
     list.oiso.communs <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/liste_oiseaux_communs_DS.csv"))
+    
+    grid.stoc <- read.csv(file = "C:/git/epoc/data/carrenat.csv")
   
   # raster
     occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
@@ -81,8 +83,7 @@
     }
     
   # sauvegarde de habitat.type -----
-    write.csv(x = habitat.type,
-              file = "C:/git/epoc/DS/Habitat_liste_buffer_1km_agglomeration.csv")
+    #write.csv(x = habitat.type, file = "C:/git/epoc/DS/Habitat_liste_buffer_1km_agglomeration.csv")
     
   # manip dtf pour avoir la part de l'habitat par liste (ID) -----
     habitat.type.part <- habitat.type %>%
@@ -148,20 +149,115 @@
     rm(tabl.communaute.bis)
 
   # sauvegarde ----
-    write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_communaute_PA_DS.csv")
+    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_communaute_PA_DS.csv")
 
 
+# Ajout de l'information de la densité de l'effort d'echantillonnage, selon la grille STOC ----
+  fra.adm.reg <-  st_transform(read_sf("C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm1.shp"),crs = 2154)
+  fra.adm.dep <- st_transform(read_sf("C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp"),crs = 2154) 
+    
+  
+  # formation de la grille spatial ----
+    grid.stoc <- grid.stoc[which(grid.stoc$perimeter >= 10),]
+    grid.stoc$id_carre <- c(1:nrow(grid.stoc))
+    
+    grid.stoc_sf <- st_transform(st_as_sf(grid.stoc, 
+                                          coords = c("lon_WGS84","lat_WGS84"),
+                                          crs=4326),
+                                 crs=crs(bary.list_sf))
+
+    grid.stoc.buff_sf <- st_buffer(grid.stoc_sf,
+                                   dist = 1000,
+                                   endCapStyle = "SQUARE")
 
 
+    
+    density.tabl <- as.data.frame(st_within(x = bary.list_sf,
+                      y = grid.stoc.buff_sf))
+    colnames(density.tabl) <- c("X","id_carre")
+    
+      
+    # gestion des listes dupliquées (= liste intersectant deux carrees stoc --> overlapping) ----
+      density.tabl <- density.tabl[which(duplicated(density.tabl$X) == FALSE),]
+    
+    # calcul de la densite par carre stoc (selon les id_carre) ----
+      density.tabl$densite <- c(rep(1,nrow(density.tabl)))
+      
+      densite.stoc <- aggregate(densite ~ id_carre,
+                                data=density.tabl,
+                                FUN=sum)
+      
+    # join la densite calcul par les id_carre ----
+      density.tabl <- density.tabl[,-3] # remove de la colonne densite --> ajout de la densite sommer par id_carre
+    
+      density.tabl <- left_join(density.tabl,densite.stoc)
+      
+      
+    # join des informations sur les listes / sur les carre_stoc ----
+      density.tabl <- left_join(density.tabl,bary.list[,c("X","ID_liste")])
+      density.tabl <- left_join(density.tabl,grid.stoc[,c("pk_carre","id_carre")])
+      
+      
+  # Ajout de l'information sur la table bary.list (gestion des listes non présente dans un carre stoc [i.e bord de cote]) -----
+    bary.list <- left_join(bary.list,density.tabl[,c("ID_liste","densite","pk_carre")])
+      
+    # listes hors grille stoc annote comme hors_grille_stoc ----
+      det.na.grid <- which(is.na(bary.list$pk_carre))
+      
+      bary.list[det.na.grid,"pk_carre"] <- "hors_grille_stoc"
+      bary.list[det.na.grid,"densite"] <- length(det.na.grid)
+      
+      
+      
+      
+      
+    
+    
+    
+  # Visualisation du besoin de faire la densite (cas haute-savoie) -----
+    list.hs <- unique(epoc.envi.obs[which(epoc.envi.obs$Departement == "Haute-Savoie"),c("ID_liste","Departement")])
 
-
-
-
-
-
-
-
-
-
-
+    bary.list.hs <- left_join(list.hs,bary.list)
+    bary.list.hs_sf <- st_transform(st_as_sf(bary.list.hs,
+                                          coords = c("X_barycentre_L93","Y_barycentre_L93"),
+                                          crs=2154),
+                                 crs(occ.sol))
+    
+    
+    
+    test.hs <- as.data.frame(st_within(x = bary.list.hs_sf,
+                                    y = grid.stoc.buff_sf))
+    
+    colnames(test.hs) <- c("X","id_carre")
+    
+    j <- unique(test.hs$id_carre)
+    
+    
+    ggplot() + 
+      geom_sf(data = fra.adm.dep[fra.adm.dep$NAME_2 == "Haute-Savoie",]) +
+      geom_sf(data=grid.stoc.buff_sf[j,]) +
+      geom_sf(data= bary.list.hs_sf)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
