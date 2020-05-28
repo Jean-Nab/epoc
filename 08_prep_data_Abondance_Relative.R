@@ -206,12 +206,6 @@
       
       bary.list[det.na.grid,"pk_carre"] <- "hors_grille_stoc"
       bary.list[det.na.grid,"densite"] <- length(det.na.grid)
-      
-      
-      
-      
-      
-    
     
     
   # Visualisation du besoin de faire la densite (cas haute-savoie) -----
