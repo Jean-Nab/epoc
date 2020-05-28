@@ -82,9 +82,7 @@
       
     }
     
-  # sauvegarde de habitat.type -----
-    #write.csv(x = habitat.type, file = "C:/git/epoc/DS/Habitat_liste_buffer_1km_agglomeration.csv")
-    
+
   # manip dtf pour avoir la part de l'habitat par liste (ID) -----
     habitat.type.part <- habitat.type %>%
       group_by(ID) %>%
@@ -100,7 +98,8 @@
     
     habitat.liste$habitat_surface_m2 <- habitat.liste$freq/100 # freq == compte de cellule de 10mx10m par type d'habitats
   
-    
+  # sauvegarde de habitat.type -----
+    #write.csv(x = habitat.liste, file = "C:/git/epoc/DS/Habitat_liste_buffer_1km_agglomeration.csv")
     
 # exploration part habitats ----
   # ACP ----
@@ -108,6 +107,7 @@
     library(ade4)
     
     # prep data
+      explo.habitat <- habitat.liste[,c(-4,-6)] # retrait de la frequence / surface des habitats
       explo.habitat <- spread(explo.habitat,habitats_agglo,part_habitat)
       
       # gestion des NA --> 0
@@ -123,6 +123,9 @@
   
       s.label(acp.habitat$li) # distrib nuage de points
       s.corcircle(acp.habitat$co) # cercle des covariables
+      
+    # sauvegarde de habitat.type -----
+      #write.csv(x = explo.habitat, file = "C:/git/epoc/DS/Habitat_liste_buffer_1km_agglomeration_R.csv")
     
   # Corrplot ----
     library(corrplot)
