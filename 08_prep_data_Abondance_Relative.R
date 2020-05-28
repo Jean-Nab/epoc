@@ -206,6 +206,9 @@
       
       bary.list[det.na.grid,"pk_carre"] <- "hors_grille_stoc"
       bary.list[det.na.grid,"densite"] <- length(det.na.grid)
+      
+  # sauvegarde ----------
+    load("C:/git/epoc/08_prep_save_1.RData")
     
     
   # Visualisation du besoin de faire la densite (cas haute-savoie) -----
