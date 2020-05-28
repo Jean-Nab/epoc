@@ -152,7 +152,7 @@
     rm(tabl.communaute.bis)
 
   # sauvegarde ----
-    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_communaute_PA_DS.csv")
+    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_communaute_PA_DS.csv",row.names=F)
 
 
 # Ajout de l'information de la densité de l'effort d'echantillonnage, selon la grille STOC ----
