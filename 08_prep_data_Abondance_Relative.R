@@ -212,6 +212,7 @@
       bary.list[det.na.grid,"densite"] <- length(det.na.grid)
       
   # sauvegarde ----------
+    write.csv(bary.list,file="C:/git/epoc/DS/epoc_barycentre_liste_density_add.csv")
     load("C:/git/epoc/08_prep_save_1.RData")
     
     
