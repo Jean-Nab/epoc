@@ -61,18 +61,14 @@
 
     epoc.envi.obs$Use_distance_sampling <- epoc.envi.obs$ID_liste %in% id.list.dist
 
-  # subsetting du jeu de donnee pour l'exploration vav du DS
-    epoc.envi.obs.DS <- epoc.envi.obs[which(epoc.envi.obs$Use_distance_sampling == T),]
-    
-    
   # mesure de la variance selon le type d'habitats lors de l'EPOC -----
     # load de la couche raster
       occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
     
     # determination de l'habitat de la liste (extract du raster)
-      tabl.dist.list <- bary.reg[bary.reg$ID_liste %in% id.list.dist,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")] # selection des listes compatible au DS
+      tabl.dist.list <- bary.reg[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")] # selection des listes
       
-      tabl.dist.list <- left_join(tabl.dist.list,unique(epoc.envi.obs.DS[,c("ID_liste","Departement")])) # add de l'information des departements -> boucle pour l'attribution des categories d'habitats
+      tabl.dist.list <- left_join(tabl.dist.list,unique(epoc.envi.obs[,c("ID_liste","Departement")])) # add de l'information des departements -> boucle pour l'attribution des categories d'habitats
       
       tabl.dist.list_sf <- st_transform(st_as_sf(tabl.dist.list, 
                                                  coords = c("X_barycentre_L93","Y_barycentre_L93"),
@@ -83,13 +79,13 @@
       
       tabl.dist.list_sf$ID <- c(rep(1:nrow(tabl.dist.list_sf)))
       
-      beginCluster()
+      
       tabl.dist.list.cate.habitat <- extract(x = occ.sol, 
                                              y = st_buffer(tabl.dist.list_sf,
                                                            dist = 50),
                                              df=T,
                                              along=T)
-      endCluster()
+      
       
       # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
       tabl.dist.list.cate.habitat$habitats <- ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(1,2,3,4),
@@ -119,8 +115,13 @@
       
       
     # join w/ dtf regroupant l'ensemble des informations selon les observations ----
-      epoc.envi.obs.DS <- left_join(epoc.envi.obs.DS,
+      epoc.envi.obs <- left_join(epoc.envi.obs,
                                     st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
+      
+      
+    # subsetting du jeu de donnee pour l'exploration vav du DS
+      epoc.envi.obs.DS <- epoc.envi.obs[which(epoc.envi.obs$Use_distance_sampling == T),]
+      
       
   # sauvegarde 2 ----
     load("C:/git/epoc/07_save1.RData")
@@ -180,9 +181,10 @@
     # récupération par liste uniquement (vs double comptage)
     # IDEE : st_within de buffer autour des barycentres
         loc.obs.DS <- loc.obs[loc.obs$ID_liste %in% id.list.dist,]      # localisation des obs compatible avec le DS (use de id.list.dist pour selectionner les bonnes listes)
-        loc.obs.DS_sf <- st_as_sf(loc.obs.DS,
-                                  coords = c("X_Lambert93_m","Y_Lambert93_m"),
-                                  crs=2154)
+        loc.obs.DS_sf <- st_transform(st_as_sf(loc.obs.DS,
+                                               coords = c("X_Lambert93_m","Y_Lambert93_m"),
+                                               crs=2154),
+                                      crs=crs(tabl.dist.list_sf))
     
     # boucle sur les listes -----
       i <- 1
@@ -658,7 +660,7 @@
     
   # save des fichiers utile pour DS ----   
     write.csv(x = epoc.envi.obs,
-              file = "C:/git/epoc/DS/epoc_environnement_observation_DS.csv")
+              file = "C:/git/epoc/DS/epoc_environnement_observation_DS1.csv")
     write.csv(x = epoc.envi.liste,
               file = "C:/git/epoc/DS/epoc_environnement_liste_DS.csv")
     write.csv(x = epoc.oiso,
