@@ -54,6 +54,23 @@
       #ref.id <- epoc.envi.obs$Ref %in% epoc.oiso$Ref 
       
       #epoc.envi.obs <- epoc.envi.obs[which(ref.id == TRUE),]
+      
+  # Données non triés selon les mois -----
+    load("C:/git/epoc/4bis_initialisation_mars_juillet.RData")
+      
+      eco.reg <- st_read("C:/git/epoc/data/france_ecoregions_v3.shp")
+      
+      fra.adm.l93 <- st_transform(st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm0.shp"),crs=2154)
+      
+     # - realise en dehors de la periode 5-17h
+      del.hour <- epoc.envi.liste[which(epoc.envi.liste$Heure_de_debut < 5 | epoc.envi.liste$Heure_de_debut > 17),"ID_liste"]
+      del.hour1 <- epoc.envi.liste$ID_liste %in% del.hour
+      del.hour2 <- epoc.oiso$ID_liste %in% del.hour
+      del.hour3 <- epoc.envi.obs$ID_liste %in% del.hour
+      
+      epoc.envi.liste <- epoc.envi.liste[which(del.hour1 == FALSE),]
+      epoc.oiso <- epoc.oiso[which(del.hour2 == FALSE),]
+      epoc.envi.obs <- epoc.envi.obs[which(del.hour3 == FALSE),]
 
 
 # Determination des ecoregions ----
@@ -128,29 +145,29 @@
         # calcul proba de detection d'au moins une espece communes a partir des donnees des "champions" ----
         # formation du dtf de nombre d'especes trouver sur les listes "champions" ----
           # qualification d'un champion
-          champ <- aggregate(Liste_complete ~ Observateur,data=epoc.envi.liste, FUN=sum)
-          champ$part_totale <- champ$Liste_complete / sum(champ$Liste_complete)*100
-          
-          champ.id <- champ[champ$part_totale > 2,] # champion = observateur ayant fait au moins plus de 2% des listes d'EPOC
-          
-          champ.id1 <- merge(x = epoc.envi.liste,y=champ.id,by="Observateur")
+            champ <- aggregate(Liste_complete ~ Observateur,data=epoc.envi.liste, FUN=sum)
+            champ$part_totale <- champ$Liste_complete / sum(champ$Liste_complete)*100
+            
+            champ.id <- champ[champ$part_totale > 2,] # champion = observateur ayant fait au moins plus de 2% des listes d'EPOC
+            
+            champ.id1 <- merge(x = epoc.envi.liste,y=champ.id,by="Observateur")
           # verif
-          length(unique(champ.id1$ID_liste)) == sum(champ.id$Liste_complete) # TRUE
+            length(unique(champ.id1$ID_liste)) == sum(champ.id$Liste_complete) # TRUE
         
         
           # selection de toutes les observations faites dans les listes de champions 
           #==> permet de compter le nb de fois qu'une espece a etait observe par les champions
-          champ.obs <- merge(x = champ.id1,y=epoc.oiso,by="ID_liste")
+            champ.obs <- merge(x = champ.id1,y=epoc.oiso,by="ID_liste")
           # verif
-          length(unique(champ.id1$ID_liste)) == length(unique(champ.obs$ID_liste)) # TRUE
+            length(unique(champ.id1$ID_liste)) == length(unique(champ.obs$ID_liste)) # TRUE
           
           # decompte du nb d'espece dans les listes champions
           # formation du dtf regroupant les especes detectee + le nombre d'occurrence d'observation
-          champ.oiso <- aggregate(Abondance_brut.y ~ ID_liste + Observateur.x + Nom_espece.y,data=champ.obs,FUN=sum)
-          champ.esp <- plyr::count(champ.oiso$Nom_espece)
-          
-          colnames(champ.esp) <- c("Nom_espece","count")
-          champ.esp$prob <- champ.esp$count/nrow(champ.id1)
+            champ.oiso <- aggregate(Abondance_brut.y ~ ID_liste + Observateur.x + Nom_espece.y,data=champ.obs,FUN=sum)
+            champ.esp <- plyr::count(champ.oiso$Nom_espece)
+            
+            colnames(champ.esp) <- c("Nom_espece","count")
+            champ.esp$prob <- champ.esp$count/nrow(champ.id1)
         
         # tirage avec poids sans remise -----
           tir.1esp <- c();       tir.2esp <- c()
@@ -349,6 +366,8 @@
     
     # Sauvegarde 1 ----
       load("C:/git/epoc/04bis_save1.RData")
+      load("C:/git/epoc/04bis_save1_mars_juillet.RData")
+      
           
     # Pre-analyse : retrait des epoc de hautes altitudes ----
       high.epoc <- epoc.envi.liste[which(epoc.envi.liste$Altitude >= 1200),"ID_liste"]
@@ -641,6 +660,7 @@
         # graphiques repartition des flags selon le nombre d'epoc -----
           #load("C:/git/epoc/qualification_obs_initialisation4.RData") # WARNING : possible variable en conflit pour la partie de code anterieur
            # preparatif (calcul des lignes rouges + restriction de l'axe des abcisses)
+            name.champ <- as.character(unique(champ.obs$Observateur.x))
             detect.champ <-observateur.flag$Observateur %in% name.champ # detection des lignes avec les champions
           
             max.champ.flag.many.rare <- max(observateur.flag[which(detect.champ == TRUE),"part_many_rare"])
@@ -677,7 +697,7 @@
               geom_hline(yintercept = max.champ.flag.first.obs,color="red") +
               ylab("Proportion de listes flaggées") +
               xlab("Nombre d'EPOC") +
-              ggtitle(paste0("Repartition du flag 1ere espece observée inhabituelle (rares ou localisées)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.meta))
+              ggtitle(paste0("Repartition du flag 1ere espece observée inhabituelle (rares ou localisées)\nPar observateurs (Sans champions)\n","Maximum champions : ",max.champ.flag.first.obs))
             
           # plot groupe des flags
             ggpubr::ggarrange(flag1,flag2,flag3,flag4)
@@ -772,7 +792,10 @@
               
               
   # Sauvegarde 2 ----
-    load("C:/git/epoc/04bis_save2.RData")  
+    load("C:/git/epoc/04bis_save2.RData")
+    load("C:/git/epoc/04bis_save2_mars_juillet.RData")
+        
+        
     # Not run ----
       # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
           # calcul de l'expérience (par incrementation) ----
@@ -880,7 +903,7 @@
           list.flag$strict <- 1
           # Pour le flag only_rare_low_div
             det.flagged.only.bad.observateur <- list.flag$ID_liste %in% det.list.only.rare.bad.observateur  
-            list.flag[which(det.flagged.only.bad.observateur == TRUE),"accepted"] <- 0
+            list.flag[which(det.flagged.only.bad.observateur == TRUE),"strict"] <- 0
           
           
           # Formation d'un 2eme jeu de données dans lequel on retire les listes flaggées scarce/1st_obs des observateurs suspicieux
@@ -989,6 +1012,8 @@
               
   # Sauvegarde 3 ----
     load("C:/git/epoc/04bis_save3.RData") 
+    load("C:/git/epoc/04bis_save3_mars_juillet.RData")    
+              
       
     # Similarite des listes de cluster ? ------
     # idee : calcul d'un indice de dissimilarite (bray-curtis)
