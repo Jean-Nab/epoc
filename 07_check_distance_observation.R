@@ -11,6 +11,9 @@
 
 # load des data
   load("C:/git/epoc/04bis_save3.RData") 
+  load("C:/git/epoc/04bis_save3_mars_juillet.RData")
+  
+  
 
   loc.obs <- epoc.envi.obs[,c("Ref","Nom_espece","Nom_latin","ID_liste","X_Lambert93_m","Y_Lambert93_m")]
   loc.obs_sf <- st_as_sf(loc.obs,
@@ -66,52 +69,85 @@
       occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
     
     # determination de l'habitat de la liste (extract du raster)
-      tabl.dist.list <- bary.reg[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")] # selection des listes
+     tabl.dist.list <- bary.reg[,c("ID_liste","X_barycentre_L93","Y_barycentre_L93")] # selection des listes
       
-      tabl.dist.list <- left_join(tabl.dist.list,unique(epoc.envi.obs[,c("ID_liste","Departement")])) # add de l'information des departements -> boucle pour l'attribution des categories d'habitats
+      tabl.dist.list <- left_join(tabl.dist.list,unique(epoc.envi.obs[,c("ID_liste","Departement")])) # add de linformation des departements -> boucle pour l'attribution des categories d'habitats
       
       tabl.dist.list_sf <- st_transform(st_as_sf(tabl.dist.list, 
                                                  coords = c("X_barycentre_L93","Y_barycentre_L93"),
                                                  crs=2154),
                                         crs=crs(occ.sol)) # conversion en sf selon le crs de la couche occupation des sols
       
-    # extract : manipulation des cellules de l'extract ------
-      
+    # extract : manipulation des cellules de lextract ------
+    
       tabl.dist.list_sf$ID <- c(rep(1:nrow(tabl.dist.list_sf)))
       
+      vec.iteration <- seq(from = 1, to = length(tabl.dist.list_sf$ID), by = 305)
       
-      tabl.dist.list.cate.habitat <- extract(x = occ.sol, 
-                                             y = st_buffer(tabl.dist.list_sf,
-                                                           dist = 50),
-                                             df=T,
-                                             along=T)
+      cate.habitat <- as.data.frame(matrix(nrow=0,ncol = 3))
+      colnames(cate.habitat) <- c("ID","habitats","freq")
       
-      
-      # regroupement des habitats en categories d'habitats (1:bati / 2:ouvert / 3:foret)
-      tabl.dist.list.cate.habitat$habitats <- ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(1,2,3,4),
-                                                     "Batis", ifelse(tabl.dist.list.cate.habitat$OCS_2018_CESBIO %in% c(16,17),
-                                                               "Foret","Ouvert")
-                                                     )
- 
-    # regroupement selon la categories majoritaire observée par buffer
-      freq.habitat.list <- group_by(tabl.dist.list.cate.habitat[,c("ID","habitats")],ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
-        plyr::count() %>%
-        group_by(ID)
-      
-      max.habitat.list <- group_by(tabl.dist.list.cate.habitat[,c("ID","habitats")],ID) %>% # detection de l'habitat majoritaire a chaque buffer (warning : pour les egalite)
-        plyr::count() %>%
-        group_by(ID) %>%
-        summarise(freq = max(freq))
-      
-      tabl.dist.list.cate.habitat2 <- left_join(max.habitat.list,freq.habitat.list)
-      tabl.dist.list.cate.habitat2 <- tabl.dist.list.cate.habitat2[!(duplicated(tabl.dist.list.cate.habitat2$ID)),] # vs probleme d'egalite (-> legere surrepresentation del'habitat 2, 53 egalites)
+      # boucle de 305 en 305: ----
+      for(i in vec.iteration){
+        
+        tabl.dist.list.tmp_sf <- tabl.dist.list_sf[i:min((i+304),length(tabl.dist.list_sf$ID)),]
+        
+        
+        tabl.dist.list.cate.habitat.tmp <- extract(x = occ.sol, 
+                                                   y = tabl.dist.list.tmp_sf,
+                                                   buffer = 50,
+                                                   df=T,
+                                                   along=T)
+        
+        
+        tabl.dist.list.cate.habitat.tmp <- as.data.frame(tabl.dist.list.cate.habitat.tmp)
+
+        # agglomeration des habitats ----
+        tabl.dist.list.cate.habitat.tmp$habitats <- ifelse(tabl.dist.list.cate.habitat.tmp$OCS_2018_CESBIO %in% c(1,2,3,4),
+                                                       "Batis", ifelse(tabl.dist.list.cate.habitat.tmp$OCS_2018_CESBIO %in% c(16,17),
+                                                                       "Foret","Ouvert")
+                                                       )
+           
+        # gestion dtf des resultats preliminaires -----
+        freq.habitat.list <- group_by(tabl.dist.list.cate.habitat.tmp[,c("ID","habitats")],ID) %>% # decompte du nombre de cellule selon leur categorie d'habitats sur chaque buffer
+          plyr::count() %>%
+          group_by(ID)
+        
+        max.habitat.list <- group_by(tabl.dist.list.cate.habitat.tmp[,c("ID","habitats")],ID) %>% # detection de l'habitat majoritaire a chaque buffer (warning : pour les egalite)
+          plyr::count() %>%
+          group_by(ID) %>%
+          summarise(freq = max(freq))
+        
+        
+        tabl.dist.list.cate.habitat.tmp2 <- left_join(max.habitat.list,freq.habitat.list)
+        tabl.dist.list.cate.habitat.tmp2 <- tabl.dist.list.cate.habitat.tmp2[!(duplicated(tabl.dist.list.cate.habitat.tmp2$ID)),] # vs probleme d'egalite (-> legere surrepresentation del'habitat 2, 53 egalites)
+        
+        
+        # rbind (need de donner des noms de colonnes qui collent entre dtfs)
+        tabl.dist.list.cate.habitat.tmp2 <- as.data.frame(tabl.dist.list.cate.habitat.tmp2)
+        tabl.dist.list.cate.habitat.tmp2$ID <- tabl.dist.list.cate.habitat.tmp2$ID + (i - 1)
+        
+        cate.habitat <- as.data.frame(rbind(cate.habitat,tabl.dist.list.cate.habitat.tmp2))  
+        
+        # rm (vs surcharge de la ram + limiter trop de noms de var differents)
+        rm(freq.habitat.list)
+        rm(max.habitat.list)
+        rm(tabl.dist.list.cate.habitat.tmp2)
+        rm(tabl.dist.list.cate.habitat.tmp)
+        rm(tabl.dist.list.tmp_sf)
+        
+        
+        # avancement boucle
+        cat(i,"/ ",vec.iteration[length(vec.iteration)],"\n")
+        
+      }
       
       # harmonisation
-      colnames(tabl.dist.list.cate.habitat2)[3] <- "Categories_habitats"
+      colnames(cate.habitat)[3] <- "Categories_habitats"
       
       
     # join au dtf tabl.dist.list_sf -> informations sur les ID_listes
-      tabl.dist.list_sf <- left_join(tabl.dist.list_sf,tabl.dist.list.cate.habitat2[,c("ID","Categories_habitats")])
+      tabl.dist.list_sf <- left_join(tabl.dist.list_sf,cate.habitat[,c("ID","Categories_habitats")])
       
       
     # join w/ dtf regroupant l'ensemble des informations selon les observations ----
@@ -125,6 +161,7 @@
       
   # sauvegarde 2 ----
     load("C:/git/epoc/07_save1.RData")
+    load("C:/git/epoc/07_save1_mars_juillet.RData")
       
       
     # variation distance selon la catégories d'habitats
@@ -185,6 +222,12 @@
                                                coords = c("X_Lambert93_m","Y_Lambert93_m"),
                                                crs=2154),
                                       crs=crs(tabl.dist.list_sf))
+        
+        #nettoyage de tabl.dist.list --> remove des doublons
+        det.doublon <- which(duplicated(tabl.dist.list_sf$ID_liste) == T)
+        det.doublon <- det.doublon-1
+        
+        tabl.dist.list_sf <- tabl.dist.list_sf[-det.doublon,]
     
     # boucle sur les listes -----
       i <- 1
@@ -231,6 +274,7 @@
     
   # sauvegarde 2 -----
     load("C:/git/epoc/07_save2.RData")
+    load("C:/git/epoc/07_save2_mars_juillet.RData")
 
       
     # calcul de l'abondance observée d'une espece selon la classe de distance et la catégories d'habitats -----
@@ -345,7 +389,10 @@
       
       class.dist.all.communs <- subset(class.dist.all,communs == 1) # warning : au especes communes ayant bcp d'observations non compatibles au DS
       
+      class.dist.all.communs2 <- unique(class.dist.all.communs[,c("Nom_espece","Nom_latin","communs")])
+      write.csv2(class.dist.all.communs2,file = "C:/git/epoc/DS.v2/Especes_communes.csv",row.names = F)
       
+  
   # visualisation des données ------
     # table des annotations (cf. tabl.esp) ------
       tabl.annot.sp <- tabl.dist.esp[,c("Nom_latin","Nom_espece","Nb_occ_habitat_Batis","Nb_occ_habitat_Ouvert","Nb_occ_habitat_Foret")]
@@ -365,7 +412,6 @@
         annot.row <- paste(c(annot.bat,"\n",annot.ouv,"\n",annot.for),collapse = "")
         
         tabl.annot.sp[i,"Annotation"] <- annot.row
-        
         
         i <- i +1
         cat(i,"/",nrow(tabl.annot.sp),"\n")
@@ -418,7 +464,7 @@
             facet_wrap(.~ Nom_latin,scales="free",ncol=3)
         
         # sauvegarde
-          ggsave(paste0("C:/git/epoc/output/graphs/",
+          ggsave(paste0("C:/git/epoc/output/graphs.v2/",
                         "Variation_distance_espece_",count,".png"),
                  width = 30, height = 30,units = "cm")
       }
@@ -567,7 +613,7 @@
               facet_wrap(.~ Nom_latin,scales="free",ncol=4)
           
           # sauvegarde
-            ggsave(paste0("C:/git/epoc/output/graphs/",
+            ggsave(paste0("C:/git/epoc/output/graphs.v2/",
                           "Courbe_accumulation_espece_communes_",count,".png"),
                    width = 30, height = 30,units = "cm")
         }
@@ -632,18 +678,20 @@
               facet_wrap(.~ Nom_latin,scales="free",ncol=4)
               
           # sauvegarde
-            ggsave(paste0("C:/git/epoc/output/graphs/",
+            ggsave(paste0("C:/git/epoc/output/graphs.v2/",
                           "Evolution_proba_detection_estimee_espece_communes_",count,".png"),
                    width = 30, height = 30,units = "cm")
           
         }
           
   # sauvegarde 3 -----
-    load("C:/git/epoc/07_save3.RData")       
+    load("C:/git/epoc/07_save3.RData")
+    load("C:/git/epoc/07_save3_mars_juillet.RData")
+    
 
   # add de la catégories d'habiats sur la table epoc.envi.obs      
-        epoc.envi.obs <- left_join(epoc.envi.obs,
-                                   st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
+  #      epoc.envi.obs <- left_join(epoc.envi.obs,
+  #                                 st_drop_geometry(tabl.dist.list_sf[,c("ID_liste","Categories_habitats")]))
         
   # conversion des coordonnes des barycentre en WGS84 (add de l'information) ----
     library(rgdal)
@@ -655,22 +703,22 @@
     bary.reg <- cbind(bary.reg,cord.bary.wgs84@coords)
     
     # harmonisation
-      colnames(bary.reg)[grep("x1",colnames(bary.reg))] <- "Lon_WGS84_bary"
-      colnames(bary.reg)[grep("x2",colnames(bary.reg))] <- "Lat_WGS84_bary"
+      colnames(bary.reg)[grep("x1",colnames(bary.reg))] <- "Lon_barycentre_WGS84"
+      colnames(bary.reg)[grep("x2",colnames(bary.reg))] <- "Lat_barycentre_WGS84"
     
   # save des fichiers utile pour DS ----   
     write.csv(x = epoc.envi.obs,
-              file = "C:/git/epoc/DS/epoc_environnement_observation_DS1.csv")
+              file = "C:/git/epoc/DS.v2/epoc_environnement_observation_DS.csv")
     write.csv(x = epoc.envi.liste,
-              file = "C:/git/epoc/DS/epoc_environnement_liste_DS.csv")
+              file = "C:/git/epoc/DS.v2/epoc_environnement_liste_DS.csv")
     write.csv(x = epoc.oiso,
-              file = "C:/git/epoc/DS/epoc_communaute_DS.csv")
+              file = "C:/git/epoc/DS.v2/epoc_communaute_DS.csv")
     write.csv(x = oiso.reg.all,
-              file = "C:/git/epoc/DS/liste_oiseaux_communs_DS.csv")
+              file = "C:/git/epoc/DS.v2/liste_oiseaux_communs_DS.csv")
     write.csv(x = bary.reg,
-              file = "C:/git/epoc/DS/epoc_barycentre_liste.csv")
+              file = "C:/git/epoc/DS.v2/epoc_barycentre_liste.csv")
     write.csv(x = tabl.intersect.all,
-              file = "C:/git/epoc/DS/epoc_table_intersection_DS.csv")   
+              file = "C:/git/epoc/DS.v2/epoc_table_intersection_DS.csv")   
         
         
         
