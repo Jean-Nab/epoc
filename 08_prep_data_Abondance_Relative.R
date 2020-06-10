@@ -10,10 +10,10 @@
 
 # import data ----
   # csv
-    epoc.envi.obs <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_environnement_observation_DS.csv"))
-    epoc.oiso <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_communaute_DS.csv"))
-    epoc.envi.liste <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_environnement_liste_DS.csv"))
-    list.oiso.communs <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/liste_oiseaux_communs_DS.csv"))
+    epoc.envi.obs <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_environnement_observation_DS.csv"))
+    epoc.oiso <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_communaute_DS.csv"))
+    epoc.envi.liste <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_environnement_liste_DS.csv"))
+    list.oiso.communs <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/liste_oiseaux_communs_DS.csv"))
     
     grid.stoc <- read.csv(file = "C:/git/epoc/data/carrenat.csv")
   
@@ -21,7 +21,7 @@
     occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
     
   # coord des listes
-    bary.list <- read.csv(file = paste0(sub("/data","/DS",getwd()),"/epoc_barycentre_liste.csv"))
+    bary.list <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_barycentre_liste.csv"))
     bary.list_sf <- st_transform(st_as_sf(bary.list,
                                           coords = c("X_barycentre_L93","Y_barycentre_L93"),
                                           crs=2154),
@@ -153,7 +153,7 @@
     rm(tabl.communaute.bis)
 
   # sauvegarde ----
-    #write.csv(tabl.communaute, file = "C:/git/epoc/DS/epoc_table_communaute_PA_DS.csv",row.names=F)
+    #write.csv(tabl.communaute, file = "C:/git/epoc/DS.v2/epoc_table_communaute_PA_DS.csv",row.names=F)
 
 
 # Ajout de l'information de la densité de l'effort d'echantillonnage, selon la grille STOC ----
@@ -206,14 +206,34 @@
     bary.list <- left_join(bary.list,density.tabl[,c("ID_liste","densite","pk_carre")])
       
     # listes hors grille stoc annote comme hors_grille_stoc ----
-      det.na.grid <- which(is.na(bary.list$pk_carre))
+      det.na.grid <- bary.list[which(is.na(bary.list$pk_carre)),"ID_liste"]
+      
+      liste.na.grid <- epoc.envi.liste[epoc.envi.liste$ID_liste %in% det.na.grid,c("ID_liste","Maille","Departement")]
       
       bary.list[det.na.grid,"pk_carre"] <- "hors_grille_stoc"
       bary.list[det.na.grid,"densite"] <- length(det.na.grid)
       
+# Ajout de l'information de la densité de l'effort d'echantillonnage selon la maille atlas -----
+  densite.tabl <- epoc.envi.liste[,c("ID_liste","Maille")]
+  densite.tabl$densite <- 1
+  
+  densite.tabl.aggr <- aggregate(densite ~ Maille,
+                                 data=densite.tabl,
+                                 FUN=sum)
+  
+  densite.tabl$densite <- NULL # preparation au join
+      
+
+  # join des informations de densite aggrege par maille atlas -----
+    densite.tabl <- left_join(densite.tabl,densite.tabl.aggr)
+      
+  # join de l'information de densite a bary.list -----
+    bary.list <- left_join(bary.list,densite.tabl)
+  
   # sauvegarde ----------
-    write.csv(bary.list,file="C:/git/epoc/DS/epoc_barycentre_liste_density_add.csv")
+    write.csv(bary.list,file="C:/git/epoc/DS.v2/epoc_barycentre_liste_density_add.csv")
     load("C:/git/epoc/08_prep_save_1.RData")
+    load("C:/git/epoc/08_prep_save1_mars_juillet.RData")
     
     
   # Visualisation du besoin de faire la densite (cas haute-savoie) -----
