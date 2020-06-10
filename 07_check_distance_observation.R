@@ -390,7 +390,8 @@
       class.dist.all.communs <- subset(class.dist.all,communs == 1) # warning : au especes communes ayant bcp d'observations non compatibles au DS
       
       class.dist.all.communs2 <- unique(class.dist.all.communs[,c("Nom_espece","Nom_latin","communs")])
-      write.csv2(class.dist.all.communs2,file = "C:/git/epoc/DS.v2/Especes_communes.csv",row.names = F)
+      
+      write.csv2(class.dist.all.communs2,file = "C:/git/epoc/DS.v2/Especes_communes_phenologies.csv",row.names = F)
       
   
   # visualisation des données ------
