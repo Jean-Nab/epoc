@@ -73,14 +73,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
           j <- grep("row_id|SpHC11M|SpHC12M|SpHC13M",colnames(list.all.var))
           dtf.tmp <- list.all.var[,j]
           
-          dtf.tmp$CLC_Batis_IndustrielM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+          dtf.tmp$CLCM_Batis_Industriel <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
           
           list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
       # 5000m
           j <- grep("row_id|SpHC11L|SpHC12L|SpHC13L",colnames(list.all.var))
           dtf.tmp <- list.all.var[,j]
           
-          dtf.tmp$CLC_Batis_IndustrielL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+          dtf.tmp$CLCL_Batis_Industriel <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
           
           list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -89,14 +89,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
             j <- grep("row_id|SpHC14M",colnames(list.all.var))
             dtf.tmp <- list.all.var[,j]
             
-            dtf.tmp$CLC_Espaces_verts_articialisesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+            dtf.tmp$CLCM_Espaces_verts_articialises <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
             
             list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
           # 5000m
             j <- grep("row_id|SpHC14L",colnames(list.all.var))
             dtf.tmp <- list.all.var[,j]
             
-            dtf.tmp$CLC_Espaces_verts_articialisesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+            dtf.tmp$CLCL_Espaces_verts_articialises <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
             
             list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -105,14 +105,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC21M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Terres_arablesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Terres_arables <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC21L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Terres_arablesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Terres_arables <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             
@@ -121,14 +121,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC22M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Cultures_permanentesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Cultures_permanentes <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC22L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Cultures_permanentesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Cultures_permanentes <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -137,14 +137,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC23M|SpHC24M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Cultures_heterogenesM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Cultures_heterogenes <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC23L|SpHC24L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Cultures_heterogenesL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Cultures_heterogenes <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -153,14 +153,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC31M|SpHC32M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_ForetsM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Forets <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC31L|SpHC32L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_ForetsL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Forets <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -170,14 +170,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC33M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Espaces_ouvertsM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Espaces_ouverts <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC33L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Espaces_ouvertsL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Espaces_ouverts <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -186,14 +186,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC41M|SpHC42M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Zones_humidesM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Zones_humides <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC41L|SpHC42L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Zones_humidesL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Zones_humides <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
   
@@ -202,14 +202,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC51M|SpHC52M",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Surfaces_eauxM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Surfaces_eaux <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
             # 5000m
               j <- grep("row_id|SpHC51L|SpHC52L",colnames(list.all.var))
               dtf.tmp <- list.all.var[,j]
               
-              dtf.tmp$CLC_Surfaces_eauxL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Surfaces_eaux <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               list.all.var <- left_join(list.all.var,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
 
@@ -225,14 +225,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC11M|SpHC12M|SpHC13M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Batis_IndustrielM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Batis_Industriel <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC11L|SpHC12L|SpHC13L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Batis_IndustrielL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Batis_Industriel <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -241,14 +241,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC14M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Espaces_verts_articialisesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Espaces_verts_articialises <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC14L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Espaces_verts_articialisesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Espaces_verts_articialises <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -257,14 +257,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC21M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Terres_arablesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Terres_arables <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC21L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Terres_arablesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Terres_arables <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -273,14 +273,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC22M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Cultures_permanentesM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Cultures_permanentes <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC22L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Cultures_permanentesL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Cultures_permanentes <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -289,14 +289,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC23M|SpHC24M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Cultures_heterogenesM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Cultures_heterogenes <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC23L|SpHC24L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Cultures_heterogenesL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Cultures_heterogenes <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -305,14 +305,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC31M|SpHC32M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_ForetsM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Forets <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC31L|SpHC32L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_ForetsL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Forets <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -322,14 +322,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC33M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Espaces_ouvertsM <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCM_Espaces_ouverts <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC33L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Espaces_ouvertsL <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
+              dtf.tmp$CLCL_Espaces_ouverts <- dtf.tmp[,-grep("row",colnames(dtf.tmp))]
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -338,14 +338,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC41M|SpHC42M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Zones_humidesM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Zones_humides <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC41L|SpHC42L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Zones_humidesL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Zones_humides <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -354,14 +354,14 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               j <- grep("row_id|SpHC51M|SpHC52M",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Surfaces_eauxM <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCM_Surfaces_eaux <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               # 5000m
               j <- grep("row_id|SpHC51L|SpHC52L",colnames(grid.predict))
               dtf.tmp <- grid.predict[,j]
               
-              dtf.tmp$CLC_Surfaces_eauxL <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
+              dtf.tmp$CLCL_Surfaces_eaux <- rowSums(dtf.tmp[,-grep("row",colnames(dtf.tmp))])
               
               grid.predict <- left_join(grid.predict,dtf.tmp[,grep("row|CLC",colnames(dtf.tmp))])
               
@@ -369,21 +369,86 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
               
               # rm de la variable de join (row_id) -----
               grid.predict <- grid.predict[,-grep("row",colnames(grid.predict))]
+              
+              
+  # Rename des variables bioclimatiques interessantes -----
+    # list.all.var ----
+      names(list.all.var)[grep("SpBioC2",colnames(list.all.var))] <- "BioClim_Amplitude_thermique"
+      names(list.all.var)[grep("SpBioC4",colnames(list.all.var))] <- "BioClim_Temp_seasonality"  
+      names(list.all.var)[grep("SpBioC18",colnames(list.all.var))] <- "BioClim_Precipitation_warmest_quarter"
 
+    # grid.predict ----
+      names(grid.predict)[grep("SpBioC2",colnames(grid.predict))] <- "BioClim_Amplitude_thermique"
+      names(grid.predict)[grep("SpBioC4",colnames(grid.predict))] <- "BioClim_Temp_seasonality"  
+      names(grid.predict)[grep("SpBioC18",colnames(grid.predict))] <- "BioClim_Precipitation_warmest_quarter"
 
 # sauvegarde sur disque -----
   write.csv(list.all.var,row.names = F,file="C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v2.csv")
   write.csv(grid.predict,row.names = F, file = "C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v2.csv")
 
+# Formation d'une version avec un retrait des habitats principaux (vs format de la donnee) -----
+  # list.all.var -----
+    # 500m
+      dtf.aggr <- list.all.var[,grep("ID_liste|CLCM",colnames(list.all.var))] # formation d'un dtf regroupant uniquement les habitats CLC du buffer 500m
+      max.hab <- max.col(dtf.aggr[-1])+1 # detection du numero des colonnes ayant la valeur max (= )
+      
+  
+      for(i in 1:nrow(dtf.aggr)){
+        
+        dtf.aggr[i,max.hab[i]] <- 0
+        
+      }    
+      
+      list.all.var[,grep("CLCM",colnames(list.all.var))] <- NULL
+      list.all.var <- left_join(list.all.var,dtf.aggr)
 
+    # 5000m
+      dtf.aggr <- list.all.var[,grep("WGS84|CLCL",colnames(list.all.var))]
+      max.hab <- max.col(dtf.aggr[-1])+1
+      
+      
+      for(i in 1:nrow(dtf.aggr)){
+        
+        dtf.aggr[i,max.hab[i]] <- 0
+        
+      }    
+      
+      list.all.var[,grep("CLCL",colnames(list.all.var))] <- NULL
+      list.all.var <- left_join(list.all.var,dtf.aggr)
 
+  # grid.predict -----
+    # 500m
+      dtf.aggr <- grid.predict[,grep("WGS84|CLCM",colnames(grid.predict))]
+      max.hab <- max.col(dtf.aggr[-c(1,2)])+2
+      
+      
+      for(i in 1:nrow(dtf.aggr)){
+        
+        dtf.aggr[i,max.hab[i]] <- 0
+        
+      }    
+      
+      grid.predict[,grep("CLCM",colnames(grid.predict))] <- NULL
+      grid.predict <- left_join(grid.predict,dtf.aggr)
+      
+    # 5000m
+      dtf.aggr <- grid.predict[,grep("WGS84|CLCL",colnames(grid.predict))]
+      max.hab <- max.col(dtf.aggr[-c(1,2)])+2
+      
+      
+      for(i in 1:nrow(dtf.aggr)){
+        
+        dtf.aggr[i,max.hab[i]] <- 0
+        
+      }    
+      
+      grid.predict[,grep("CLCL",colnames(grid.predict))] <- NULL
+      grid.predict <- left_join(grid.predict,dtf.aggr)
 
-
-
-
-
-
-
+      
+# sauvegarde sur disque -----
+  write.csv(list.all.var,row.names = F,file="C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v3.csv")
+  write.csv(grid.predict,row.names = F, file = "C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v3.csv")
 
 
 
