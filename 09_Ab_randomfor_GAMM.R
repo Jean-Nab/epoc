@@ -109,10 +109,18 @@
       ungroup() %>%
       dplyr::select(-cell)
     
+    # gestion du jeu de donnees a posteriori du sous-echantillonnement spatial ------
+      # detection et suppression de l'habitat CLC majoritaire -----
+        max.hab <- colSums(data_sample[,grep("CLCM",colnames(data_sample))])
+        max.hab <- names(which.max(max.hab))
+        
+        data_sample[,grep(max.hab,colnames(data_sample))] <- NULL
     
-    # Division du jeu de data en train et test (pour GAM) -----
-      # splitting de la data en train/test 
-        data_split <- data_sample %>%
+    
+    
+  # Division du jeu de data en train et test (pour GAM) -----
+    # splitting de la data en train/test 
+      data_split <- data_sample %>%
           split(if_else(runif(nrow(.)) <= 0.8,"train","test"))
     freq.detect.post.subsampl <- mean(data_split$train$sp_observee) # frequence de detection des especes apres sous-echantillonnement
     
@@ -322,7 +330,7 @@
   # Formation des formules de modeles (<=> OSO + bio-alti / CLC + bio-alti / OSO + CLC + bio-alti) -----
     # AVANT : Selection des variables environnementales pour le GAM -> 3 modeles [Bioclim + OSO / Bioclim + CLC / Bioclim + OSO + CLC] -----
       # variables bioclimatiques  
-        var.bio <- colnames(data_sample)[grep("BioC2|BioC4|BioC18",colnames(data_sample))]
+        var.bio <- colnames(data_sample)[grep("BioClim",colnames(data_sample))]
   
       # variables environnementales OSO
         var.hab.OSO <- colnames(data_sample)[grep("HO",colnames(data_sample))]
@@ -330,13 +338,14 @@
         var.hab.OSO <- var.hab.OSO[-grep("HO3S",var.hab.OSO)]
         
       # variables environnementales CLC niveau 2
-        var.hab.CLC <- colnames(data_sample)[grep("HC[0-9]{2}",colnames(data_sample))]
-        var.hab.CLC <- var.hab.CLC[-grep("HC[0-9]{3}",var.hab.CLC)]
-        var.hab.CLC <- var.hab.CLC[grep("M",var.hab.CLC)]
-        var.hab.CLC <- var.hab.CLC[-grep("52",var.hab.CLC)]
+        var.hab.CLC <- colnames(data_sample)[grep("CLCM",colnames(data_sample))]
+        #var.hab.CLC <- var.hab.CLC[grep("M",var.hab.CLC)]
+        
+        var.hab.CLC.TEST <- colnames(data_sample)[grep("CLCM",colnames(data_sample))]
+        var.hab.CLC.TEST <- var.hab.CLC.TEST[grep("ouvert|hetero|Forets|arable",var.hab.CLC.TEST)]
         
       # variables annexees a la prise de mesure
-        var.mesure <- c("Heure_de_debut","Tps_ecoute","Jour_de_l_annee","SpAltiS","X_barycentre_L93","Y_barycentre_L93")
+        var.mesure <- c("Heure_de_debut","Tps_ecoute","Jour_de_l_annee","X_barycentre_L93","Y_barycentre_L93","SpAltiS")
       
         
   # Exploration de la colinéarité des variables -------
@@ -347,8 +356,12 @@
   
   # parametre d'ondulation du GAM ----
     k <- 5
+    k1 <- -1
   
   # formation des formules ----
+    str.hab <- str_glue("s({var}, k={k1})",var=union(var.bio,var.hab.CLC),k1=k1) %>%
+      str_flatten(collapse = " + ")
+    
     formul.GAM.OSO <- str_glue("s({var}, k = {k})", 
                                var = union(union(var.hab.OSO,var.bio),var.mesure), k = k) %>%
       str_flatten(collapse = " + ") %>%
@@ -356,16 +369,16 @@
       as.formula()
     
     formul.GAM.CLC <- str_glue("s({var}, k = {k})", 
-                               var = union(union(var.hab.CLC,var.bio),var.mesure), k = k) %>%
+                               var = var.mesure, k = k) %>%
       str_flatten(collapse = " + ") %>%
-      str_glue("Abondance ~ ",.) %>%
+      str_glue("Abondance ~ ",.," + ",str.hab) %>%
       as.formula()
     
-    formul.GAM.CLC.OSO <- str_glue("s({var}, k = {k})", 
-                                   var = union(union(union(var.hab.CLC,var.hab.OSO),var.bio),var.mesure), k = k) %>%
-      str_flatten(collapse = " + ") %>%
-      str_glue("Abondance ~ ",.) %>%
-      as.formula()
+    #formul.GAM.CLC.OSO <- str_glue("s({var}, k = {k})", 
+     #                              var = union(union(union(var.hab.CLC,var.hab.OSO),var.bio),var.mesure), k = k) %>%
+      #str_flatten(collapse = " + ") %>%
+      #str_glue("Abondance ~ ",.) %>%
+      #as.formula()
     
     formul.GAM.bio_mesure <- str_glue("s({var}, k = {k})", 
                                       var = union(var.bio,var.mesure), k = k) %>%
@@ -536,18 +549,48 @@
           invisible(p_df)
         }
 
-    plot_gam(mod.GAM.nb, title = "Negative Binomial GAM"," k term = check k")
-    plot_gam(mod.GAM.tw, title = "Tweedie GAM"," k term = check k")
+    plot.gam.title <- paste0("Negative Binomial GAM : ",sp)    
+    plot.gam.title1 <- paste0("Tweedie GAM : ",sp)   
+    
+    plot_gam(mod.GAM.nb, title = plot.gam.title)
+    plot_gam(mod.GAM.tw, title = plot.gam.title1)
     
     
 # Prediction ----
+  # detection l'heure de debut optimal -----
+    seq_tod <- seq(5, 17, length.out = 300)
+    tod_df <- data_split$train %>% 
+      # find average pland habitat covariates
+      dplyr::select(starts_with("CLCM"),"X_barycentre_L93","Y_barycentre_L93",starts_with("Sp")) %>% 
+      summarize_all(mean, na.rm = TRUE) %>% 
+      ungroup() %>% 
+      # use standard checklist
+      mutate(Jour_de_l_annee = date.opti,
+             Tps_ecoute = 0.05) %>% 
+      cbind(Heure_de_debut = seq_tod)
 
 
+    # Prediction selon differentes heure de debut 
+      pred_tod <- predict(mod.GAM.nb, newdata = tod_df, 
+                          type = "link", 
+                          se.fit = TRUE) %>% 
+        as_tibble() %>% 
+        # Calcul de l'interval de confiance
+        transmute(Heure_de_debut = seq_tod,
+                  pred = mod.GAM.nb$family$linkinv(fit),
+                  pred_lcl = mod.GAM.nb$family$linkinv(fit - 1.96 * se.fit),
+                  pred_ucl = mod.GAM.nb$family$linkinv(fit + 1.96 * se.fit))
 
+    # Heure optimal par le GAM
+      heure.opti.GAM <- pred_tod$Heure_de_debut[which.max(pred_tod$pred_lcl)] ; heure.opti.GAM
 
-
-
-
+    # Visualisation ----
+      ggplot(pred_tod) +
+        aes(x = Heure_de_debut, y = pred,
+            ymin = pred_lcl, ymax = pred_ucl) +
+        geom_ribbon(fill = "grey80", alpha = 0.5) +
+        geom_line() +
+        geom_vline(xintercept = heure.opti.GAM, color = "blue", linetype = "dashed")
 
 
 
