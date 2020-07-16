@@ -3,6 +3,7 @@
 
   
 library(dplyr)
+library(ade4)
   
 
 # import data ----
@@ -386,6 +387,39 @@ for(i in 1:(nb.rot-1)){ # boucle de 40 iterations
   write.csv(list.all.var,row.names = F,file="C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v2.csv")
   write.csv(grid.predict,row.names = F, file = "C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v2.csv")
 
+  
+  
+# Aggregation des variables bioclimatiques selon les axes d'une ACP ------ 
+  # list.all.var -----
+    list.group.bio <- list.all.var[,grep("SpBio|BioClim",colnames(list.all.var))]
+    
+    list.acp <- dudi.pca(list.group.bio,center=T,scale = T,nf = 3,scannf = F) # ACP selon les 3 premiers axes
+  
+    list.all.var <- list.all.var %>%
+      bind_cols(list.acp$li) # binding des résidus de l'ACP sur les 3 premiers axes
+    
+    # Rename des axes de l'ACP ----
+      colnames(list.all.var) <- gsub("Axis","BioClim_ACP_Axis",colnames(list.all.var))
+  
+  
+  # grid.predict -----
+    grid.group.bio <- grid.predict[,grep("SpBio|BioClim",colnames(grid.predict))]
+    
+    grid.acp <- dudi.pca(grid.group.bio,center=T,scale = T,nf = 3,scannf = F) # ACP selon les 3 premiers axes
+    
+    grid.predict <- grid.predict %>%
+      bind_cols(grid.acp$li) # binding des résidus de l'ACP sur les 3 premiers axes
+    
+    # Rename des axes de l'ACP ----
+      colnames(grid.predict) <- gsub("Axis","BioClim_ACP_Axis",colnames(grid.predict))
+    
+    
+  # sauvegarde sur disque -----
+    write.csv(list.all.var,row.names = F,file="C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v2.1.csv")
+    write.csv(grid.predict,row.names = F, file = "C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v2.1.csv")
+    
+  
+  
 # Formation d'une version avec un retrait des habitats principaux (vs format de la donnee) -----
   # list.all.var -----
     # 500m
