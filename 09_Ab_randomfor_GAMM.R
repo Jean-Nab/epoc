@@ -15,7 +15,7 @@
   library(ranger)
   library(pdp)
   library(caret)
-  library(mgcv)
+  #library(mgcv)
   library(MASS)
   library(PresenceAbsence)
   library(dggridR)
@@ -26,9 +26,9 @@
   bary.list <- read.csv("C:/git/epoc/DS.v2/epoc_barycentre_liste_density_add.csv")
   tabl.commu <- read.csv("C:/git/epoc/DS.v2/epoc_table_communaute_PA_DS.csv")
   epoc.oiso <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_communaute_DS.csv"))
-  list.all.var <- read.csv("C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v2.csv")
+  list.all.var <- read.csv("C:/git/epoc/data/Donnees_Yves/GI_Coordonnee_listes_EPOC_cleaned_v2.1.csv")
   tabl.pheno <- read.csv2(file = paste0(sub("/data","/DS.v2",getwd()),"/Especes_communes_phenologies.csv"))
-  grid.predict <- read.csv("C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v2.csv")
+  grid.predict <- read.csv("C:/git/epoc/data/Donnees_Yves/GI_SysGrid__3e+05_cleaned_v2.1.csv")
   
 
 
@@ -46,7 +46,7 @@
     data.rF.sp <- left_join(data.rF.sp,epoc.oiso[epoc.oiso$Nom_latin == sp,c("ID_liste","Abondance")])
     data.rF.sp[which(is.na(data.rF.sp$Abondance)),"Abondance"] <- 0
     
-    data.rF.sp <- left_join(data.rF.sp,unique(epoc.envi.obs[,c("ID_liste","Heure_de_debut","Tps_ecoute","Jour_de_l_annee")]))
+    data.rF.sp <- left_join(data.rF.sp,unique(epoc.envi.obs[,c("ID_liste","Heure_de_debut","Tps_ecoute","Jour_de_l_annee","Annee")]))
     data.rF.sp <- data.rF.sp[which(duplicated(data.rF.sp$ID_liste) == FALSE),]
   
     #data.rF.sp <- left_join(data.rF.sp,var.envi.liste[,c(-1,-2)])
@@ -60,10 +60,11 @@
     data.rF.sp[which(data.rF.sp$Ab_ecretee > ab.max),"Ab_ecretee"] <- ab.max
     
   # ajout variables environnementales (Yves) ----
-    data.rF.sp <- right_join(data.rF.sp,list.all.var)
+    data.rF.sp <- right_join(data.rF.sp,list.all.var,by= "ID_liste")
     
     data.rF.sp <- data.rF.sp[-which(is.na(data.rF.sp$sp_observee)),]
     
+   
   # filtrage phenologiques ------
     # recup des dates de jour/fin selon la table phenologique (tabl.pheno) ----
       jD <- tabl.pheno[tabl.pheno$Nom_latin == sp,"debut_jour"]
@@ -129,7 +130,8 @@
     det.CLC <- grep("CLC",colnames(data_split$train))
     
     var.model <- data_split$train %>%
-      dplyr::select(-sp_observee,-Abondance,-densite,-Ab_ecretee,-Jour,-Mois,-ID_liste,-all_of(det.CLC)) %>%
+      dplyr::select(-sp_observee,-Abondance,-densite,-Ab_ecretee,-Jour,
+                    -Mois,-ID_liste,-all_of(det.CLC),-Annee,-starts_with("BioClim_ACP")) %>%
       names()
     
     formul.model <- str_glue("{var}", var = var.model) %>%
@@ -163,7 +165,7 @@
     #                        gamma=1.4,
     #                        data=rf.1_0.pred.train)
     
-    calibration.model <- gam(obs ~ s(pred),
+    calibration.model <- mgcv::gam(obs ~ s(pred),
                              family = nb,
                              data=rf.1_0.pred.train) # ; gam.check(calibration.model)
 
@@ -314,6 +316,9 @@
   
   pred.model <- predict(rf.1_0, grid.predict.sp, type="response")
   grid.predict.sp$Prob_presence <- pred.model$predictions[,2]
+  
+  grid.predict.sp[which(grid.predict.sp$Prob_presence >= 0.9),"Abondance"] <- 1
+  
 
 # Visualisation ------
   grid.predict.sp_sf <- st_as_sf(grid.predict.sp, coords = c("Lon_WGS84_bary","Lat_WGS84_bary"),crs=4326)
@@ -321,16 +326,39 @@
 # Proba : Presence/Absence
   ggplot() + 
     geom_sf(data = grid.predict.sp_sf, aes(colour= Prob_presence)) +
-    scale_colour_viridis_c() +
+    scale_colour_viridis_c(option = "B") +
     ggtitle(sp)
 
 
 # Modelisation de l'abondance w/ GAM avec info de prediction de la presence/absence -----
+  # sous-echantillonnement spatial plus ferme -----
+    dggs <- dgconstruct(spacing = 10) # formation d'une grille hexagonale avec un espacement de ~ 10km
+    
+    data_cell.GAM <- data_sample %>%
+      mutate(cell = dgGEO_to_SEQNUM(dggs, Lon_WGS84_bary, Lat_WGS84_bary)$seqnum) # assignation d'un identifiant d'hexagone selon la position des listes
+    
+    data_sample.GAM <- data_cell.GAM %>%     # Tirage aléatoire des listes (1 liste par cellule) / presence et absence traite de facon independantes
+      group_by(sp_observee,cell) %>% 
+      sample_n(size = 1) %>% 
+      ungroup() %>%
+      dplyr::select(-cell)
+    
+    data_sample.GAM$Annee <- as.factor(data_sample.GAM$Annee)
+
+  # Division du jeu de data en train et test (pour GAM) -----
+    # splitting de la data en train/test 
+    data_split.GAM <- data_sample.GAM %>%
+      split(if_else(runif(nrow(.)) <= 0.8,"train","test"))
+    freq.detect.post.subsampl.GAM <- mean(data_split.GAM$train$sp_observee) 
+  
+  
   # Modele GAM ------
+    data_split$train$Annee <- as.factor(data_split$train$Annee) 
+    
   # Formation des formules de modeles (<=> OSO + bio-alti / CLC + bio-alti / OSO + CLC + bio-alti) -----
     # AVANT : Selection des variables environnementales pour le GAM -> 3 modeles [Bioclim + OSO / Bioclim + CLC / Bioclim + OSO + CLC] -----
       # variables bioclimatiques  
-        var.bio <- colnames(data_sample)[grep("BioClim",colnames(data_sample))]
+        var.bio <- colnames(data_sample)[grep("BioClim_ACP",colnames(data_sample))]
   
       # variables environnementales OSO
         var.hab.OSO <- colnames(data_sample)[grep("HO",colnames(data_sample))]
@@ -339,39 +367,61 @@
         
       # variables environnementales CLC niveau 2
         var.hab.CLC <- colnames(data_sample)[grep("CLCM",colnames(data_sample))]
-        #var.hab.CLC <- var.hab.CLC[grep("M",var.hab.CLC)]
+        #var.hab.CLC <- var.hab.CLC[grep("Batis|Terres|Forets|Surfaces",var.hab.CLC)]
         
         var.hab.CLC.TEST <- colnames(data_sample)[grep("CLCM",colnames(data_sample))]
         var.hab.CLC.TEST <- var.hab.CLC.TEST[grep("ouvert|hetero|Forets|arable",var.hab.CLC.TEST)]
         
       # variables annexees a la prise de mesure
-        var.mesure <- c("Heure_de_debut","Tps_ecoute","Jour_de_l_annee","X_barycentre_L93","Y_barycentre_L93","SpAltiS")
+        var.mesure <- c("Heure_de_debut","Jour_de_l_annee")
       
         
   # Exploration de la colinéarité des variables -------
-    corrplot::corrplot(cor(data_sample[,which(colnames(data_sample) %in% union(union(var.hab.CLC,var.bio),var.mesure) == TRUE)],method="spearman"),
-                       method="number")
-    corrplot::corrplot(cor(data_sample[,which(colnames(data_sample) %in% var.hab.OSO == TRUE)],method="spearman"),
-                       method="number")
+    #corrplot::corrplot(cor(data_sample[,which(colnames(data_sample) %in% union(union(var.hab.CLC,var.bio),var.mesure) == TRUE)],method="spearman"),
+      #                 method="number")
+    #corrplot::corrplot(cor(data_sample[,which(colnames(data_sample) %in% var.hab.OSO == TRUE)],method="spearman"),
+     #                 method="number")
   
   # parametre d'ondulation du GAM ----
-    k <- 5
-    k1 <- -1
+    k <- -1
+    k1 <- 20
   
   # formation des formules ----
-    str.hab <- str_glue("s({var}, k={k1})",var=union(var.bio,var.hab.CLC),k1=k1) %>%
+    str.hab <- str_glue('s({var}, k={k1},bs="cr")',var=union(var.hab.CLC,var.bio),k1=k1) %>%
       str_flatten(collapse = " + ")
     
+    str.loc <- str_glue('s(Lon_WGS84_bary,Lat_WGS84_bary, k=20, bs="sos") + Annee')
+    
+    
     formul.GAM.OSO <- str_glue("s({var}, k = {k})", 
-                               var = union(union(var.hab.OSO,var.bio),var.mesure), k = k) %>%
+                               var = union(var.hab.OSO,var.mesure), k = k) %>%
       str_flatten(collapse = " + ") %>%
       str_glue("Abondance ~ ",.) %>%
       as.formula()
     
-    formul.GAM.CLC <- str_glue("s({var}, k = {k})", 
+    formul.GAM.CLC <- str_glue('s({var}, k = {k},bs="cr")', 
                                var = var.mesure, k = k) %>%
       str_flatten(collapse = " + ") %>%
       str_glue("Abondance ~ ",.," + ",str.hab) %>%
+      str_glue(.," + ",str.loc) %>%
+      as.formula()
+    
+    '
+    formul.GAMM.CLC <- str_glue("s({var}, k = {k})", 
+                               var = var.mesure, k = k) %>%
+      str_flatten(collapse = " + ") %>%
+      str_glue("Abondance ~ ",.," + ",str.hab, " + Annee") %>%
+      as.formula()
+    '
+    
+    
+    str.hab.GLS <- str_glue("{var}",var=var.hab.CLC) %>%
+      str_flatten(collapse = " + ")
+    
+    formul.GLS.CLC <- str_glue("{var}", 
+                               var = var.mesure) %>%
+      str_flatten(collapse = " + ") %>%
+      str_glue("Abondance ~ ",.," + ",str.hab.GLS, " + Annee") %>%
       as.formula()
     
     #formul.GAM.CLC.OSO <- str_glue("s({var}, k = {k})", 
@@ -401,7 +451,7 @@
   
   # Modeles GAM (w/ differentes loi de distribution [Zero inflated-Poisson / Negative binomial / Tweedie?]) -----
     start_gam_nb <- Sys.time()
-    mod.GAM.nb.mesure <- gam(formul.GAM.mesure, 
+    mod.GAM.nb.mesure <- mgcv::gam(formul.GAM.mesure, 
                              data =data_split$train,
                              family= "nb",
                              method = "REML")
@@ -409,7 +459,7 @@
     
     
     start_gam_nb <- Sys.time()
-    mod.GAM.nb.bio <- gam(formul.GAM.bio, 
+    mod.GAM.nb.bio <- mgcv::gam(formul.GAM.bio, 
                       data =data_split$train,
                       family= "nb",
                       method = "REML")
@@ -417,7 +467,7 @@
     
     
     start_gam_nb <- Sys.time()
-    mod.GAM.nb.bio_mesure <- gam(formul.GAM.bio_mesure, 
+    mod.GAM.nb.bio_mesure <- mgcv::gam(formul.GAM.bio_mesure, 
                              data =data_split$train,
                              family= "nb",
                              method = "REML")
@@ -425,21 +475,69 @@
     
     
     start_gam_nb <- Sys.time()
-    mod.GAM.nb <- gam(formul.GAM.CLC, 
+    mod.GAM.nb <- mgcv::gam(formul.GAM.CLC, 
                       data =data_split$train,
                       family= "nb",
-                      method = "REML")
+                      method = "REML",select=TRUE)#,
+                      #correlation = corSpher(form = ~ Lon_WGS84_bary + Lat_WGS84_bary))
     end_gam_nb <- Sys.time() ; end_gam_nb - start_gam_nb
+    
+    '
+    start_gam_nb <- Sys.time()
+    mod.GAM.nb <- gamm(formul.GAMM.CLC, 
+                      data =data_split.GAM$train,
+                      family= "nb",
+                      method = "REML",
+    correlation = corSpher(form = ~ Lon_WGS84_bary + Lat_WGS84_bary))
+    end_gam_nb <- Sys.time() ; end_gam_nb - start_gam_nb
+    '
+    
+    
+    '
+    start <- Sys.time()
+    m.GLS <- gls(formul.GLS.CLC, 
+                 data =data_split.GAM$train,
+                 correlation = corSpher(form = ~ Lon_WGS84_bary + Lat_WGS84_bary))
+    end <- Sys.time() ; end - start
+    
+    variogram <- Variogram(m.GLS, form = ~ Lon_WGS84_bary + Lat_WGS84_bary)
+    plot(variogram)
+    '
     
     
     start_gam_tw <- Sys.time()
-    mod.GAM.tw <- gam(formul.GAM.CLC, 
+    mod.GAM.tw <- mgcv::gam(formul.GAM.CLC, 
                       data =data_split$train,
                       family= "tw",
-                      method = "REML")
+                      method = "REML",select = TRUE)#,
+                      #correlation = corSpher(form = ~ Lon_WGS84_bary + Lat_WGS84_bary))
     end_gam_tw <- Sys.time() ; end_gam_tw - start_gam_tw
   
-  
+    
+    
+    # tentative de selection de modele (step-wise) ----
+      library(gam)
+    
+      # formation des formules -----
+        str.hab.test <-  str_glue('s({var})',var=union(var.hab.CLC,var.bio),k1=k1) %>%
+          str_flatten(collapse = " + ")
+    
+        str.loc.test <- str_glue('s(Lon_WGS84_bary,Lat_WGS84_bary) + Annee')
+        
+        formul.GAM.CLC.test <- str_glue('s({var})', 
+                                   var = var.mesure, k = k) %>%
+          str_flatten(collapse = " + ") %>%
+          str_glue("Abondance ~ ",.," + ",str.hab.test) %>%
+          str_glue(.," + ",str.loc.test) %>%
+          as.formula()
+        
+        
+        # etablissement de la scope (l'ensemble des possibilite de combinaison) -----
+          tabl.var <- data_split.GAM$train[,c(grep("Abondance|CLCM|BioClim_Axis|Tps_ecoute|Annee|Jour_de|WGS84",colnames(data_split.GAM$train)))]
+    
+          mod.test <- gam::gam(formul.GAM.CLC.test,family = "nb",data = data_split$train)
+    
+    
   
   # Evaluation des modeles -----
     # determination du meilleur modele (prediction sur donnees de test ----
@@ -519,6 +617,12 @@
           group_by(family) %>% 
           summarise(MAE = mean(abs(obs - pred), na.rm = TRUE)) %>% 
           ungroup()
+        
+# Selection du modele le plus performant -----
+  lower.AIC <- min(AIC(mod.GAM.nb),AIC(mod.GAM.tw))
+  
+  ifelse(test = lower.AIC == AIC(mod.GAM.nb), mod.GAM.4.pred <- mod.GAM.nb,
+         mod.GAM.4.pred <- mod.GAM.tw)
       
 
 # Check effet des variables (effet ecologique concret ?) ----
@@ -530,6 +634,8 @@
           p <- plot(m, pages = 5)
           dev.off()
           unlink(tmp)
+          
+          p <- p[-length(p)]
          
           # extract data
           p_df <- purrr::map_df(p, ~ tibble(cov = rep(.$xlab, length(.$x)),
@@ -560,18 +666,17 @@
   # detection l'heure de debut optimal -----
     seq_tod <- seq(5, 17, length.out = 300)
     tod_df <- data_split$train %>% 
-      # find average pland habitat covariates
-      dplyr::select(starts_with("CLCM"),"X_barycentre_L93","Y_barycentre_L93",starts_with("Sp")) %>% 
+      dplyr::select(starts_with("CLCM"),starts_with("BioClim"),starts_with("SpBio"),"Jour_de_l_annee","Lon_WGS84_bary","Lat_WGS84_bary") %>% 
       summarize_all(mean, na.rm = TRUE) %>% 
       ungroup() %>% 
       # use standard checklist
-      mutate(Jour_de_l_annee = date.opti,
-             Tps_ecoute = 0.05) %>% 
-      cbind(Heure_de_debut = seq_tod)
+      mutate(Tps_ecoute = 0.05) %>% 
+      cbind(Heure_de_debut = seq_tod,
+            Annee = 2019)
 
 
     # Prediction selon differentes heure de debut 
-      pred_tod <- predict(mod.GAM.nb, newdata = tod_df, 
+      pred_tod <- predict.gam(mod.GAM.nb, newdata = tod_df, 
                           type = "link", 
                           se.fit = TRUE) %>% 
         as_tibble() %>% 
@@ -591,7 +696,218 @@
         geom_ribbon(fill = "grey80", alpha = 0.5) +
         geom_line() +
         geom_vline(xintercept = heure.opti.GAM, color = "blue", linetype = "dashed")
+      
+      
+  # detection la date optimale -----
+      seq_tod <- seq(dateD, dateF, length.out = (as.numeric(dateF)-as.numeric(dateD))*2)
+      tod_df <- data_split$train %>% 
+        # find average pland habitat covariates
+        dplyr::select(starts_with("CLCM"),starts_with("BioClim"),starts_with("SpBio"),"Jour_de_l_annee","Lon_WGS84_bary","Lat_WGS84_bary") %>% 
+        summarize_all(mean, na.rm = TRUE) %>% 
+        ungroup() %>% 
+        # use standard checklist
+        mutate(Tps_ecoute = 0.05,
+               Heure_de_debut = heure.opti.GAM) %>% 
+        cbind(Jour_de_l_annee = seq_tod,
+              Annee = 2019)
+      
+      
+      # Prediction selon differentes heure de debut 
+      pred_tod <- predict(mod.GAM.nb, newdata = tod_df, 
+                          type = "link", 
+                          se.fit = TRUE) %>% 
+        as_tibble() %>% 
+        # Calcul de l'interval de confiance
+        transmute(Jour_de_l_annee = seq_tod,
+                  pred = mod.GAM.nb$family$linkinv(fit),
+                  pred_lcl = mod.GAM.nb$family$linkinv(fit - 1.96 * se.fit),
+                  pred_ucl = mod.GAM.nb$family$linkinv(fit + 1.96 * se.fit))
+      
+      # Heure optimal par le GAM
+      date.opti.GAM <- pred_tod$Jour_de_l_annee[which.max(pred_tod$pred_lcl)] ; date.opti.GAM
+      
+    # Visualisation ----
+      ggplot(pred_tod) +
+        aes(x = Jour_de_l_annee, y = pred,
+            ymin = pred_lcl, ymax = pred_ucl) +
+        geom_ribbon(fill = "grey80", alpha = 0.5) +
+        geom_line() +
+        geom_vline(xintercept = date.opti.GAM, color = "blue", linetype = "dashed")
 
+      
+  # modification de la grille de prediction ----
+      grid.predict.sp$Heure_de_debut <- heure.opti.GAM
+      grid.predict.sp$Jour_de_l_annee <- date.opti.GAM
+      grid.predict.sp$Annee <- 2019
+      
+      
+      
+      pred.GAM <- predict.gam(mod.GAM.4.pred, newdata = grid.predict.sp, 
+                      type = "link", 
+                      se.fit = TRUE) %>% 
+        as_tibble() %>% 
+        # Calcul de l'interval de confiance + conversion (exp() pour negative binomial)
+        transmute(Abondance = mod.GAM.4.pred$family$linkinv(fit),
+                  Abondance_se = mod.GAM.4.pred$family$linkinv(se.fit),
+                  Abondance_bornes_inf_interval = mod.GAM.4.pred$family$linkinv(fit - 1.96 * se.fit),
+                  Abondance_bornes_sup_interval = mod.GAM.4.pred$family$linkinv(fit + 1.96 * se.fit)) %>%
+        # Ajout a la table de prediction
+        bind_cols(grid.predict.sp, .)
+      
+      #j <- pred.GAM[,328:333]
+      
+    # preparation visualisation ------
+      pred.GAM[which(pred.GAM$Abondance1 < 0.1),"Abondance1"] <- 0
+      
+      pred.GAM[which(pred.GAM$Abondance_se > quantile(pred.GAM$Abondance_se,0.9)),"Abondance_se"] <- quantile(pred.GAM$Abondance_se,0.9)
+      
+      '
+      pred.GAM$Abondance_cat <- ifelse(test = pred.GAM$Abondance >= 60, "+60",
+                                       ifelse(test = pred.GAM$Abondance >= 40,  "60-40",
+                                              ifelse(test = pred.GAM$Abondance >= 30, "40-30",
+                                                     ifelse(test = pred.GAM$Abondance >=20, "30-20",
+                                                            ifelse(test = pred.GAM$Abondance >= 10, "20-10",
+                                                                   ifelse(test = pred.GAM$Abondance >= 5, "10-5",
+                                                                          ifelse(test = pred.GAM$Abondance >= 4, "5-4",
+                                                                                 ifelse(test = pred.GAM$Abondance >= 3, "4-3",
+                                                                                        ifelse(test = pred.GAM$Abondance >= 2, "3-2",
+                                                                                               ifelse(test = pred.GAM$Abondance >= 1, "2-1",
+                                                                                                      ifelse(test = pred.GAM$Abondance >= 0.05, "1-0.05",
+                                                                                                             "0")))))))))))
+      '
+      
+      grid.predict.sp_sf <- st_as_sf(pred.GAM, coords = c("Lon_WGS84_bary","Lat_WGS84_bary"),crs=4326)
+      grid.predict.sp_sp <- SpatialPointsDataFrame(coords = pred.GAM[,c("Lon_WGS84_bary","Lat_WGS84_bary")],data = pred.GAM,
+                                                   proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+      
+  # Visualisation -----
+    ggplot() + 
+      geom_sf(data = grid.predict.sp_sf, aes(colour= log(Abondance1))) +
+      #scale_colour_gradientn(colors = hcl.colors(6,palette = "Green-Orange",rev=T)) +
+      labs(colour = "Log(Abondance)") +
+      scale_colour_viridis_c(option="B") +
+      ggtitle(sp)
+      
+    ggplot() + 
+      geom_sf(data = grid.predict.sp_sf, aes(colour= log(Abondance_se))) +
+      scale_colour_gradient(low = "black",high = "white") +
+      labs(colour = "Log(Variance)") + 
+      ggtitle(sp,"GAM : Carte de la variance")
+
+    
+    
+  # merge des 2 prédictions -----
+    grid.predict.sp_sf$Abondance_corrige <- grid.predict.sp_sf$Abondance1 * grid.predict.sp_sf$Prob_presence
+    grid.predict.sp_sf[which(grid.predict.sp_sf$Abondance_corrige < 0.1),"Abondance_corrige"] <- 0
+    
+    grid.predict.sp_sf$Abondance_corrige2 <- grid.predict.sp_sf$Abondance_corrige * (551695/(227753*(pi*0.2^2)))
+    #grid.predict.sp_sf$Abondance_non_corrige <- grid.predict.sp_sf$Abondance * (551695/(227753*(pi*0.2^2)))
+    
+    #grid.predict.sp_sf$Abondance_bornes_sup_interval1 <- grid.predict.sp_sf$Abondance * grid.predict.sp_sf$Prob_presence
+    
+    grid.predict.sp_sf$Abondance_corrige2_cat <- ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 400, "+400",
+                                     ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 300,  "400-300",
+                                            ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 150, "300-150",
+                                                   ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >=50, "150-50",
+                                                          ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 25, "50-25",
+                                                                 ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 10, "25-10",
+                                                                        ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 7, "10-7",
+                                                                               ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 4, "7-4",
+                                                                                      ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 2, "4-2",
+                                                                                             ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 1, "2-1",
+                                                                                                    ifelse(test = grid.predict.sp_sf$Abondance_corrige2 >= 0.05, "1-0.05",
+                                                                                                           "0")))))))))))
+    
+    
+    
+    
+    
+    
+    # Visualisation -----
+      ggplot() + 
+        geom_sf(data = grid.predict.sp_sf, aes(colour= log(Abondance_corrige))) +
+        #scale_colour_gradientn(colors = hcl.colors(6,palette = "Green-Orange",rev=T)) +
+        scale_colour_viridis_c(option="B") +
+        labs(colour = "Log(Abondance corrigée)") +
+        ggtitle(sp)
+    
+    
+  # Calcul des abondances sur le territoire francais ------
+    ab_tot_moy <- sum(grid.predict.sp_sf$Abondance1 * 
+                        grid.predict.sp_sf$Prob_presence * 
+                        (551695/(227753*(pi*0.2^2))))
+    
+    ab_tot_inf <- sum(grid.predict.sp_sf$Abondance_bornes_inf_interval * 
+                        grid.predict.sp_sf$Prob_presence * 
+                        (551695/(227753*(pi*0.2^2))))
+    
+    ab_tot_sup <- sum(grid.predict.sp_sf$Abondance_bornes_sup_interval * 
+                        grid.predict.sp_sf$Prob_presence * 
+                        (551695/(227753*(pi*0.2^2))))
+
+    
+  # plot des listes de presence -------
+    carte_presence <- data_split$train
+    
+    carte_presence$sp_observee[carte_presence$sp_observee>1] <- 1
+    carte_presence$color <- ifelse(carte_presence$sp_observee == 1,"green","red")
+    
+    carte_presence_sf <- st_as_sf(carte_presence,coords = c("X_barycentre_L93","Y_barycentre_L93"),crs=2154)
+    
+    fra.adm.l93 <- st_transform(st_read(dsn = "C:/Users/Travail/Desktop/Ressource QGis/france/adm/FRA_adm2.shp"),crs=2154)
+    
+    
+    ggplot() +
+      geom_sf(data = fra.adm.l93,alpha = 0.5) +
+      geom_sf(data = carte_presence_sf,aes(colour = as.factor(sp_observee)),alpha = 0.5)+
+      scale_colour_manual(values=c("red","green")) +
+      labs(colour = "Presence de l'espèce") +
+      ggtitle(sp, "Carte des EPOC avec données de présence")
+
+    
+  # chek-up de la prediction (comparaison avec la partie du jeu de données non utilisé pour former le modèle) ------
+    m_nb_pred$pred_corrigee <- m_nb_pred$pred * p_fitted # ajout de la prediction corr
+    m_nb_pred$coefficient_pred_obs <- m_nb_pred$pred / (m_nb_pred$obs + 1) 
+    m_nb_pred$coefficient_pred_corrigee_obs <- m_nb_pred$pred_corrigee / (m_nb_pred$obs + 1)
+    
+    
+    
+    
+    m_tw_pred$pred_corrigee <- m_tw_pred$pred * p_fitted
+    m_tw_pred$coefficient_pred_obs <- m_tw_pred$pred / m_tw_pred$obs 
+    m_tw_pred$coefficient_pred_corrigee_obs <- m_tw_pred$pred_corrigee / m_tw_pred$obs
+    
+    
+  # visualisation du check-up ------
+    # grpah check-up de la presence
+      ggplot(data =rf.1_0.pred.test,aes (x=obs,y=pred_non_calibre)) +
+        geom_jitter() +
+        geom_abline(slope = 1)+
+        geom_smooth(method=lm)+
+      xlab("Observations") + ylab("Valeur prédite") + ggtitle(sp,"randomForest")
+    
+    # grpah check-up de l'abondance
+    ggplot(data =m_nb_pred,aes (x=obs,y=pred)) +
+      geom_jitter() +
+      geom_abline(slope = 1) +
+      geom_smooth(method=lm) +
+      ylab("Valeur prédite") + xlab("Observations") + ggtitle(sp,"GAM")
+    
+    # grpah check-up de l'abondance X presence
+    ggplot(data =m_nb_pred,aes (x=obs,y=pred_corrigee)) +
+      geom_jitter() +
+      geom_abline(slope = 1)+
+      geom_smooth(method=lm) +
+      ylab("Valeur prédite") + xlab("Observations") + ggtitle(sp,"randomForest x GAM")
+    
+    
+      
+# NOT RUN -----
+  # evaluation de l'autocorr des residus ----
+    library(spdep)
+      
+      
+      
 
 
 
