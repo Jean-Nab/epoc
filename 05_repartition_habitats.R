@@ -156,7 +156,12 @@ while(i <= length(id.list)){
     # visualisation
       ggplot(habi.all.tot, aes(fill=Points,y=surface_100m,x=habitat)) + geom_bar(position = "dodge",stat = "identity") +
         xlab("Code habitats") + ylab("Surface d'habitats en ha") +
-        ggtitle("Répartition des habitats : \nPoints d'écoutes EPOCs vs points aléatoires")
+        scale_fill_manual(values = c("firebrick3","steelblue2")) +
+        #ggtitle("Répartition des habitats : \nPoints d'écoutes EPOCs vs points aléatoires") +
+        theme(axis.title.x = element_text(size = rel(1.25)),
+              axis.title.y = element_text(size = rel(1.25)),
+              axis.text.y = element_text(size = rel(1.1)),
+              axis.text.x = element_text(size = rel(1.1)))
       
 # Interpretation
     # 112 : surr ds epoc [Discontinuous urban fabric] [= ville]
