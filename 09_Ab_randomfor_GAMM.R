@@ -34,7 +34,7 @@
 
 # formation du dataset pour randomForest (data.rF.sp) -----
   # choix espece
-   sp <- "Emberiza citrinella"
+   sp <- "Fringilla coelebs"
   
   # selection pres/abs de l'espece 
     tabl.PA.sp <- tabl.commu[,c(1,grep(pattern = gsub(" ",".",sp),colnames(tabl.commu)))]
@@ -64,6 +64,9 @@
     
     data.rF.sp <- data.rF.sp[-which(is.na(data.rF.sp$sp_observee)),]
     
+    # nettoyage
+      data.rF.sp[,grep("[.]y",colnames(data.rF.sp))] <- NULL
+      colnames(data.rF.sp) <- gsub("[.]x","",colnames(data.rF.sp))
    
   # filtrage phenologiques ------
     # recup des dates de jour/fin selon la table phenologique (tabl.pheno) ----
@@ -390,7 +393,7 @@
     str.hab <- str_glue('s({var}, k={k1},bs="cr")',var=union(var.hab.CLC,var.bio),k1=k1) %>%
       str_flatten(collapse = " + ")
     
-    str.loc <- str_glue('s(Lon_WGS84_bary,Lat_WGS84_bary, k=20, bs="sos") + Annee')
+    str.loc <- str_glue('s(Lat_WGS84_bary,Lon_WGS84_bary, bs="sos") + Annee')
     
     
     formul.GAM.OSO <- str_glue("s({var}, k = {k})", 
