@@ -837,15 +837,15 @@
               library(gamm4)
               library(voxel)
               
-              flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-              flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-              flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
-              flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
+              flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=gaussian)
+              flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=gaussian)
+              flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=gaussian)
+              flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=gaussian)
                
-              g1 <- plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
-              g2 <- plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
-              g3 <- plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
-              g4 <- plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
+              g1 <- voxel::plotGAMM(flag.many.rare.gamm4,smooth.cov = "experience_protocole")
+              g2 <- voxel::plotGAMM(flag.only.rare.gamm4,smooth.cov = "experience_protocole")
+              g3 <- voxel::plotGAMM(flag.scarce.commun.gamm4,smooth.cov = "experience_protocole")
+              g4 <- voxel::plotGAMM(flag.first.obs.gamm4,smooth.cov = "experience_protocole")
     
               # flag meta
                 flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag, random = ~ (1|Observateur),family=binomial)
@@ -855,6 +855,8 @@
               library(ggpubr)          
               ggarrange(g1,g2,g3 + rremove("x.text")
                        ,g4 + rremove("x.text"))
+              ggarrange(g3,g2,g1
+                        ,g4)
     
               par(mfrow=c(2,2))
               plot(flag.many.rare.gamm4$gam,main="GAM : flag many rare")
@@ -864,13 +866,13 @@
               
     
               # sans claude falke
-                list.flag2 <- list.flag[which(list.flag$Observateur %in% "Claude Falke" == FALSE),]
+                list.flag2 <- list.flag[which(list.flag$Observateur %in% name.champ == F),]
       
-                flag.many.rare.gamm4 <- gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-                flag.only.rare.gamm4 <- gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-                flag.scarce.commun.gamm4 <- gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-                flag.first.obs.gamm4 <- gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
-                flag.meta.gamm4 <- gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=binomial)
+                flag.many.rare.gamm4 <- gamm4::gamm4(flag_many_rare ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=gaussian)
+                flag.only.rare.gamm4 <- gamm4::gamm4(flag_only_rare_low_div ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=gaussian)
+                flag.scarce.commun.gamm4 <- gamm4::gamm4(flag_scarce_commun ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=gaussian)
+                flag.first.obs.gamm4 <- gamm4::gamm4(flag_first_obs_unusual ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=gaussian)
+                flag.meta.gamm4 <- gamm4::gamm4(flag_meta ~ s(experience_protocole), data=list.flag2, random = ~ (1|Observateur),family=gaussian)
                 
               
           
@@ -909,6 +911,8 @@
           # Formation d'un 2eme jeu de données dans lequel on retire les listes flaggées scarce/1st_obs des observateurs suspicieux
             det.flagged.scarce_commun.bad.observateur <- list.flag$ID_liste %in% det.list.scarce_first.bad.observateur
             list.flag[which(det.flagged.scarce_commun.bad.observateur == TRUE),"strict"] <- 0
+            
+            write.csv(list.flag, file = "C:/git/epoc/data/flags_lists.csv")
           
     # Analyse exploratoire : Etude des clusters ----
       library(sqldf)  
