@@ -63,6 +63,7 @@ setwd("C:/git/epoc/data")
     epoc.filt2 <- epoc.filt1
     epoc.filt2bis <- epoc.filt1bis        
 
+    
     # POUR LISTES EPOC ds commentaire/remarque        
       duree_ecout_deb <- lubridate::hm(epoc.filt2$Heure_debut)
       duree_ecout_fin <- lubridate::hm(epoc.filt2$Heure_fin)
