@@ -66,7 +66,9 @@
       return(o)
     }
     
-    epoc_dep <- aggregate(ID_liste ~ Departement, data=epoc.envi.obs, FUN=length_unique)
+    epoc.envi.obs1 <- epoc.envi.obs[which(epoc.envi.obs$Annee == 2019),]
+    
+    epoc_dep <- aggregate(ID_liste ~ Departement, data=epoc.envi.obs1, FUN=length_unique)
     colnames(epoc_dep)[2] <- "Nb_EPOC_dep"
     
     colnames(fra.adm2.l93)[7] <- "Departement"
@@ -75,10 +77,15 @@
     
     tm_shape(fra.adm2.l93) +
       tm_fill(col="Nb_EPOC_dep",
-              style="fixed", breaks =c(1,10,25,50,75,300,1500,3000,4950),
+              style="fixed", breaks =c(1,5,15,50,100,250,500,1000,1500,2770),
+              #style="fixed", breaks = quantile(epoc_dep$Nb_EPOC_dep,rep(1:10)/10),
               palette="BuGn",
               title = "Nombre \nd'EPOC par\ndépartement",
-              colorNA = "burlywood2") +
+              as.count = F,
+              interval.closure = "right",
+              colorNA = "burlywood2",
+              textNA = "Absence d'EPOC",
+              legend.format = list(text.separator= "à")) +
       tm_compass(position = c("right","top"), type = "8star",size = 5, lwd=0.5) +
       tm_scale_bar(position = c("left","top"), width = 0.15) +
       tm_borders(col=NA,lwd=0,alpha=0.50)    
