@@ -5,6 +5,7 @@ setwd("C:/git/epoc/data")
   library(tidyverse)
   library(stringr)
   library(plyr)
+  library(lubridate)
 
 
 # import data (faire un import a partir du dataset merged 2017-2018-2019)
@@ -61,24 +62,34 @@ setwd("C:/git/epoc/data")
   # idee : passer par la valeur absolue et selectionner toutes les observations avec une valeur absolue <= 0.08
     epoc.filt2 <- epoc.filt1
     epoc.filt2bis <- epoc.filt1bis        
-            
+
     # POUR LISTES EPOC ds commentaire/remarque        
-    epoc.filt2[,"Heure_debut"] <- as.numeric(gsub("\\:","\\.",epoc.filt1[,"Heure_debut"]))
-    epoc.filt2[,"Heure_fin"] <- as.numeric(gsub("\\:","\\.",epoc.filt1[,"Heure_fin"]))
+      duree_ecout_deb <- lubridate::hm(epoc.filt2$Heure_debut)
+      duree_ecout_fin <- lubridate::hm(epoc.filt2$Heure_fin)
+      
+      duree_ecout <- (lubridate::hour(duree_ecout_fin)*60 + lubridate::minute(duree_ecout_fin)) - 
+        (lubridate::hour(duree_ecout_deb)*60 + lubridate::minute(duree_ecout_deb))
+       
+      epoc.filt2[,"Tps_ecoute"] <- duree_ecout
+      
+      tps_epoc <- which(epoc.filt2[,"Tps_ecoute"] >= 5 & epoc.filt2[,"Tps_ecoute"] <= 8)
+      epoc.filt2 <- epoc.filt2[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 8 minutes
     
-    epoc.filt2[,"Tps_ecoute"] <- abs(epoc.filt2[,"Heure_fin"] - epoc.filt2[,"Heure_debut"]) # valeur absolue 
+    # POUR LISTE sans EPOC dans commentaire/remarque  
+      duree_ecout_deb <- lubridate::hm(epoc.filt2bis$Heure_debut)
+      duree_ecout_fin <- lubridate::hm(epoc.filt2bis$Heure_fin)
+      
+      duree_ecout <- (lubridate::hour(duree_ecout_fin)*60 + lubridate::minute(duree_ecout_fin)) - 
+        (lubridate::hour(duree_ecout_deb)*60 + lubridate::minute(duree_ecout_deb))
+      
+      epoc.filt2bis[,"Tps_ecoute"] <- duree_ecout
+      
+      tps_epoc <- which(epoc.filt2bis[,"Tps_ecoute"] >= 5 & epoc.filt2bis[,"Tps_ecoute"] <= 7)
+      epoc.filt2bis <- epoc.filt2bis[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 6 minutes
     
-    tps_epoc <- which(epoc.filt2[,"Tps_ecoute"] >= 0.01 & epoc.filt2[,"Tps_ecoute"] <= 0.08)
-    epoc.filt2 <- epoc.filt2[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 8 minutes
     
-    # POUR LISTE sans EPOC dans commentaire/remarque
-    epoc.filt2bis[,"Heure_debut"] <- as.numeric(gsub("\\:","\\.",epoc.filt1bis[,"Heure_debut"]))
-    epoc.filt2bis[,"Heure_fin"] <- as.numeric(gsub("\\:","\\.",epoc.filt1bis[,"Heure_fin"]))
     
-    epoc.filt2bis[,"Tps_ecoute"] <- abs(epoc.filt2bis[,"Heure_fin"] - epoc.filt2bis[,"Heure_debut"]) # valeur absolue 
     
-    tps_epoc <- which(epoc.filt2bis[,"Tps_ecoute"] >= 0.05 & epoc.filt2bis[,"Tps_ecoute"] <= 0.06)
-    epoc.filt2bis <- epoc.filt2bis[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 6 minutes
     
   # Enregistrement sur le disque
     write.table(x = epoc.filt2, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_2.txt"),sep="\t",dec=","
