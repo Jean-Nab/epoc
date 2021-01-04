@@ -8,5 +8,5 @@
 > - 03-07 : Analyses exploratoire
 > - 08 : Extraction & agrégation habitats Corine Land Cover
 > - 09 : Modélisation de la variation spatiale
->> Aire de distribution (*randomForest*)
->> Abondance relative
+>   - Aire de distribution (*randomForest*)
+>   - Abondance relative
