@@ -1,5 +1,8 @@
 output/
 data/
+test_biomod/
+output_brouillon/
+DS/
 
 
 .Rproj.user
@@ -30,26 +33,22 @@ _*
 *.odp
 *.rdb
 *.rdx
+*.docx
+*.csv
+*.qgz
+
+
 brouillon.R
 brouillon2.R
 brouillon3.R
 brouillon4.R
-*.qgz
-
-
 0X2_epoc_maille.R
-output_brouillon/liste_espece_faune-france.txt
 brouillon5.R
 brouillon_visu_effort_echan.R
-output_brouillon/list_date.csv
-output_brouillon/list_date.txt
 brouillon_visu_effort_echantillonnage.R
 brouillon6.R
-DS/epoc_communaute_DS.csv
-*.csv
 brouillon_yves.R
 brouillon_rF.R
-*.docx
 brouillon_yves2.R
 08test2_Distance_Sampling.R
 08test_Distance_Sampling.R
