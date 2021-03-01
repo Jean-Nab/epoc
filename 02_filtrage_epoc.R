@@ -6,6 +6,7 @@ setwd("C:/git/epoc/data")
   library(stringr)
   library(plyr)
   library(lubridate)
+  library(data.table)
 
 
 # import data (faire un import a partir du dataset merged 2017-2018-2019)
@@ -24,37 +25,38 @@ setwd("C:/git/epoc/data")
   epoc <- rbind(epoc.a,epoc.b,epoc.c,epoc.d,epoc.e)
 '
 
-  epoc <- read.table(file = paste0(sub("/data","/output",getwd()),"/export_2017_2019.txt"),header=T,sep="\t", dec=","
-                       , encoding="UTF-8",quote="")
-
+  epoc2017_2019 <- fread(file = paste0(sub("/data","/output",getwd()),"/export_2017_2019.txt"),header=T, stringsAsFactors = F,
+                         encoding="UTF-8",quote="")
+  epoc2020 <- fread(file = paste0(sub("/data","/output",getwd()),"/export_2020.txt"), stringsAsFactors = F,
+                    encoding="UTF-8",quote="")
   
+  epoc <- rbind(epoc2017_2019,epoc2020,fill=T) # rbind de data.table
+  epoc <- as.data.frame(epoc)
   
 # 1er filtrage selon la mention "epoc" dans les commentaires/remarques ----
     # idee : recherche des termes epoc/Epoc/EPOC dans les commentaires
       # Rajout de mention epoc pour les ID de liste
-        # Detection des ID_liste comprenant la mention d'epoc dans les remarques
+        # Detection des ID_liste comprenant la mention d'epoc dans les remarques et commentaires des listes
             rq <- grep("EPOC",toupper(epoc[,"Remarque"])) # recherche de la mention epoc (ecrit sous differentes manieres dans la colonne "Remarque")
-            ID.rq <- epoc[rq,"ID_liste"] # Recherche des ID_liste associe
+            comm <- grep("EPOC",toupper(epoc[,"Commentaire_de_la_liste"])) # recherche de la mention epoc (ecrit sous differentes manieres dans la colonne "Commentaire_de_la_liste")
+            comm_rq <- union(comm,rq)
+              
+            ID.comm_rq <- epoc[comm_rq,"ID_liste"] # Recherche des ID_liste associe
             
-            obs_liste <- which(epoc[,"ID_liste"] %in%  ID.rq) # recherche de toutes les lignes avec un ID_liste contenu dans ID.rq
+            obs_liste <- which(epoc[,"ID_liste"] %in%  ID.comm_rq) # recherche de toutes les lignes avec un ID_liste contenu dans ID.rq
             
             epoc[obs_liste,"Remarque"] <- "EPOC" # attribution de la mention EPOC aux observations
             rq1 <- grep("EPOC",toupper(epoc[,"Remarque"]))
             
         # Filtrage du jeu de donnees afin d'avoir uniquement les observations ou la mention epoc est integrer
-            comm <- grep("EPOC",toupper(epoc[,"Commentaire_de_la_liste"])) # detection des lignes contenant la mention epoc dans la colonne commentaire
-            
-            comm_rq <- union(comm,rq1) # concatenation des 2 vecteurs renseignant les positions sans prendre en compte les doublons
+            epoc.filt1 <- epoc[rq1,] # formation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
           
-            epoc.filt1 <- epoc[comm_rq,] # formation du dtf filtre par le mentionnement du protocole epoc dans commmentaire/remarque
-          
-            
-            epoc.filt1bis <- epoc[-comm_rq,]
+            epoc.filt1bis <- epoc[-rq1,]
             epoc.filt1bis <- epoc.filt1bis[epoc.filt1bis$Annee == 2017,]
             
         # Enregistrement sur le disque
-            write.table(x = epoc.filt1, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_1.txt"),sep="\t",dec=","
-                        ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+            # write.table(x = epoc.filt1, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_1.txt"),sep="\t",dec=","
+            #             ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
   
   
 # 2nd filtrage selon la duree d'ecoute ----
@@ -88,24 +90,19 @@ setwd("C:/git/epoc/data")
       tps_epoc <- which(epoc.filt2bis[,"Tps_ecoute"] >= 5 & epoc.filt2bis[,"Tps_ecoute"] <= 7)
       epoc.filt2bis <- epoc.filt2bis[tps_epoc,] # dataframe contenant uniquement les observations de 5 a 6 minutes
     
-    
-    
-    
-    
   # Enregistrement sur le disque
     write.table(x = epoc.filt2, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_2.txt"),sep="\t",dec=","
-                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)  
+                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+    
     
 # 3eme filtrage selon les protocoles : ----
       # Retrait des protocoles : "SHOC" ; "STOC_EPS" ; "STOC_MONTAGNE" ; "STOC_ONF" ; "STOC_SITES" ; "WATERBIRD"
       # Donc, formation d'un dtf avec les protocoles "GENERIC_BIRD" et ""
-        levels(epoc.filt2$Protocole)
-        search.prot <- grep("GENERIC_BIRD|",epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
+        search.prot <- grepl("(GENERIC_BIRD|)",epoc.filt2$Protocole)|is.na(epoc.filt2$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
 
-        levels(epoc.filt2bis$Protocole)
         search.protbis <- grep("SHOC|STOC_EPS|STOC_MONTAGNE|STOC_ONF|STOC_SITES|WATERBIRD",epoc.filt2bis$Protocole) # Ici, length(search.prot) == nrow(epoc.filt2) ==> toutes les observations suivent le protocole "GENERIC_BIRD" ou ""
-        
-      
+        ""
+
         epoc.filt3 <- epoc.filt2[search.prot,]
         
         epoc.filt3bis <- epoc.filt2bis[-search.protbis,]
@@ -114,9 +111,9 @@ setwd("C:/git/epoc/data")
       # Enregistrement sur le disque
         write.table(x = epoc.filt3, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_3.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)  
+        
 
 # 4eme filtrage : retrait des observations "type de localisation == jardin" ----
-        levels(epoc.filt3$Type_de_localisation)
         
         loc.jardin <- grep("Jardin",epoc.filt3$Type_de_localisation)
         loc.jardinbis <- grep("Jardin",epoc.filt3bis$Type_de_localisation)
@@ -127,6 +124,7 @@ setwd("C:/git/epoc/data")
       # Enregistrement sur le disque
         write.table(x = epoc.filt4, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_4.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+        
         
 # 5eme filtrage selon l'etat de la liste : selection des listes completes -----
         epoc.filt5 <- epoc.filt4[epoc.filt4$Liste_complete == 1,]
@@ -140,29 +138,20 @@ setwd("C:/git/epoc/data")
       # Enregistrement sur le disque
         write.table(x = epoc.filt5, file = paste0(sub("/data","/output",getwd()),"/epoc_filtre_5.txt"),sep="\t",dec=","
                     ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+        
 
 # Rajout des colonnes Diversite_liste et Abondance_liste servant d'indice pour qualifier la liste ----
     # Idee : travaille de decompte d'espece et d'abondance total pour une liste a la fois (detection des listes & isolement d'une liste ==> calcul des indices)
         epoc.filt5$Diversite_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Diversite_liste (= nb d'espece specifique observe dans chaque liste)
         epoc.filt5$Abondance_liste <- c(rep(0,nrow(epoc.filt5))) # formation d'une nouvelle colonne Abondance_liste (= total du comptage de chaque liste)
         
-        vec.ID <- unique(epoc.filt5$ID_liste) # vecteur regroupant les ID de listes
+        div_list <- data.table::setDT(epoc.filt5)[, .(Diversite_liste = data.table::uniqueN(Nom_espece)), by = ID_liste]
+        epoc.filt5 <- dplyr::left_join(epoc.filt5,div_list)
         
-        # boucle de lecture des ID de listes 
-        u <- 1
-        while (u <= length(vec.ID)){
-          
-          # formation d'un tableau temporaire contenant des informations sur les identifiants de liste et les differentes especes
-          dtf.tmp <- epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],c("Nom_espece","ID_liste","Nombre")]       
-          # calcul de la diversite (membre de droite) et ajout dans la colonne Diversite_liste pour toutes les lignes ayant un ID_liste identique 
-          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Diversite_liste"] <- length(unique(dtf.tmp$Nom_espece)) 
-          # calcul de l'abondance total par liste (somme realise sur un dtf temporaire regroupant toutes les observations d'une liste a la fois)
-          epoc.filt5[epoc.filt5$ID_liste == vec.ID[u],"Abondance_liste"] <- sum(dtf.tmp$Nombre)
-          
-          
-          cat(u,"/",length(vec.ID),"\n") # etat d'avancement de la boucle
-          u <- u + 1 # incrementation de l'indice de lecture de boucle
-        }
+        
+        ab_list <- data.table::setDT(epoc.filt5)[, .(Abondance_liste = sum(Nombre)), by = ID_liste] 
+        epoc.filt5 <- dplyr::left_join(epoc.filt5,ab_list)
+        
 
 # 6eme filtrage selon les details de l'observation ----
       # conditions : "En vol" ; "posé" ; "en main" ; "analyse de pelotes" ; "Contact auditif"
@@ -230,19 +219,8 @@ setwd("C:/git/epoc/data")
               # ==> Besoin d'ordonne les EPOC selon le temps
               
               epoc.filt6.exp <- epoc.filt6[,c("Observateur","ID_liste","Jour","Mois","Annee","Date","Heure_de_debut","Minute_de_debut")] 
-              
-              i <- 1
-              while(i <= nrow(epoc.filt6.exp)){
-                
-                
-                # formation d'une nouvelle colonne regroupant toutes les informations temporelles
-                epoc.filt6.exp[i,"date"] <- paste0(epoc.filt6.exp[i,"Jour"],"/",epoc.filt6.exp[i,"Mois"],"/",epoc.filt6.exp[i,"Annee"]," ",epoc.filt6.exp[i,"Heure_de_debut"],":",epoc.filt6.exp[i,"Minute_de_debut"])
-                
-                cat(i,"/ ",nrow(epoc.filt6.exp),"\n")
-                i <- i+1
-              }
-              
-              
+              epoc.filt6.exp$date <- paste0(epoc.filt6.exp$Jour,"/",epoc.filt6.exp$Mois,"/",epoc.filt6.exp$Annee," ",epoc.filt6.exp$Heure_de_debut,":",epoc.filt6.exp$Minute_de_debut)
+            
               
               id.obs <- unique(epoc.filt6$Observateur) # debut de boucle sur les observateurs
               dtf.exp <- data.frame() # fromation d'un noueau dataframe
@@ -267,15 +245,9 @@ setwd("C:/git/epoc/data")
               }
               
               # Pour le moment : Experience liee a une ID --> besoin de rajouter l'experience a toutes les observations de meme ID_liste
-              id.epoc <- unique(epoc.filt6$ID_liste)
-              i <- 1
-              while(i <= length(id.epoc)){
-                
-                epoc.filt6[epoc.filt6$ID_liste == id.epoc[i],"Experience"] <- dtf.exp[dtf.exp$ID_liste == id.epoc[i],"Experience"]
-                
-                cat(i,"/ ",length(id.epoc),"\n")
-                i <- i+1
-              }
+                epoc.filt6 <- dplyr::left_join(epoc.filt6,dtf.exp[,c("ID_liste","Experience")])
+            
+              
 # 6 bis : modification de la forme du tableau passage d'un format large a un format long ----
     epoc.filt6.long <- reshape(epoc.filt6, varying = c("Nb_pose","Nb_vol","Nb_audition","Nb_NA"),
                            v.names = "Nb_contact",
@@ -314,14 +286,26 @@ setwd("C:/git/epoc/data")
 # separation du jeu de donnees en 2 tableaux (var env/localisation et var communautes d'oiseaux) ----
   epoc.oiso <- epoc.filt7.court.in[,c("Ref","ID_liste","Observateur","Nom_espece","Nom_latin","Abondance_brut","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA")]
         
-  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","ID_Espece_Biolovision","Date","Nom_espece","Nom_latin","Abondance_brut","Abondance","Jour","Mois","Annee","Jour_de_l_annee",
-                                      "Pentade","Decade","numero_de_la_semaine","Horaire","Heure_debut","Heure_de_debut","Minute_de_debut","Heure_fin","Heure_de_fin",
-                                      "Minute_de_fin","Liste_complete","Commentaire_de_la_liste","ID_Lieu_dit","Lieu_dit","Commune","Departement","Code_INSEE","Pays","Type_de_localisation",
-                                      "X_Lambert_IIe_m","Y_Lambert_IIe_m","X_Lambert93_m","Y_Lambert93_m","Lat_WGS84","Lon_WGS84","latitude_DMS","longitude_DMS",
-                                      "Maille","Altitude","Details","Code_atlas","Remarque","Remarque_privee","Estimation","Nb_pose","Nb_vol","Nb_audition","Nb_NA","Nom","Prenom","Observateur","Experience","Tps_ecoute",
-                                      "Diversite_liste","Abondance_liste","Mention_EPOC")]
-  epoc.envi.liste <- which(duplicated(epoc.envi$ID_liste) == FALSE)
-  epoc.envi.liste <- epoc.envi[epoc.envi.liste,]
+  epoc.envi <- epoc.filt7.court.in[,c("UUID","Ref","ID_liste","Code_atlas","Jour","Mois","Annee","Jour_de_l_annee",
+                                      "Heure_debut","Tps_ecoute","Diversite_liste","Abondance_liste","Mention_EPOC","Liste_complete","Maille","Departement","X_Lambert93_m","Y_Lambert93_m","Lat_WGS84","Lon_WGS84",
+                                      "Altitude","Observateur","Experience")]
+  
+  #calcul des informations des listes
+    # altitude moyenne
+      alt_mean <- aggregate(Altitude ~ ID_liste, data = epoc.envi, FUN = mean) ; epoc.envi$Altitude <- NULL
+      colnames(alt_mean)[2] <- "Altitude_moyenne"
+      epoc.envi <- left_join(epoc.envi,alt_mean)
+    # barycentre
+      # Calcul du barycentre des observations par listes (proxy, position de l'observateur) ----
+        bary.x <- aggregate(X_Lambert93_m ~ ID_liste, data=epoc.envi,mean) ; colnames(bary.x) <- c("ID_liste","X_barycentre_L93")
+        bary.y <- aggregate(Y_Lambert93_m ~ ID_liste, data=epoc.envi,mean) ; colnames(bary.y) <- c("ID_liste","Y_barycentre_L93")
+        
+        bary <- left_join(bary.x,bary.y,by="ID_liste")
+        
+        epoc.envi <- left_join(epoc.envi,bary)
+  
+  epoc.bary <- which(duplicated(epoc.envi$ID_liste) == FALSE)
+  epoc.bary <- epoc.envi[epoc.bary,]
   
   
   # homogeneisation
@@ -333,14 +317,21 @@ setwd("C:/git/epoc/data")
       epoc.oiso2$Abondance <- epoc.oiso2$Abondance_brut - epoc.oiso2$Nb_vol
       
   
-    write.table(x = epoc.oiso2, file = paste0(sub("/data","/output",getwd()),"/epoc_communaute.txt"),sep="\t",dec=","
-                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
-    write.table(x = epoc.envi, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),sep="\t",dec=","
-                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
-    write.table(x = epoc.envi.liste, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_liste.txt"),sep="\t",dec=","
-                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+    # write.table(x = epoc.oiso2, file = paste0(sub("/data","/output",getwd()),"/epoc_communaute.txt"),sep="\t",dec=","
+    #             ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+    # write.table(x = epoc.envi, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_observation.txt"),sep="\t",dec=","
+    #             ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+    # write.table(x = epoc.envi.liste, file = paste0(sub("/data","/output",getwd()),"/epoc_environnement_liste.txt"),sep="\t",dec=","
+    #             ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
   
-
+    # save.image("C:/git/ODF/data/02_before_disk_writing.RData")
+      
+      write.table(x = epoc.oiso2, file = "C:/git/ODF/data/ODF_epoc_communaute.txt",sep="\t",dec=","
+                               ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
+      write.table(x = epoc.bary, file = "C:/git/ODF/data/ODF_epoc_barycentre.txt",sep="\t",dec=","
+                  ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
+      write.table(x = epoc.filt7.court.in, file = "C:/git/ODF/data/ODF_epoc_observation.txt",sep="\t",dec=","
+                  ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
     
       
 # testing ground (not run) ----
