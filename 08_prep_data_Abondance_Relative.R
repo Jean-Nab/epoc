@@ -18,7 +18,7 @@
     grid.stoc <- read.csv(file = "C:/git/epoc/data/carrenat.csv")
   
   # raster
-    occ.sol <- raster("C:/git/epoc/data/OCS_2018_CESBIO.tif")
+    occ.sol <- raster("C:/Users/Travail/Desktop/Ressource QGis/france/OCS_2018_CESBIO.tif")
     
   # coord des listes
     bary.list <- read.csv(file = paste0(sub("/data","/DS.v2",getwd()),"/epoc_barycentre_liste.csv"))
