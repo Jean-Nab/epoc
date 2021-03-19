@@ -313,11 +313,11 @@ setwd("C:/git/epoc/data")
   
     # save.image("C:/git/ODF/data/02_before_disk_writing.RData")
       
-      write.table(x = epoc.oiso2, file = "C:/git/ODF/data/ODF_epoc_communaute.txt",sep="\t",dec=","
+      write.table(x = epoc.oiso2, file = "C:/git/ODF/data/ODF_epoc_communaute.txt",sep="\t",dec="."
                                ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE)
-      write.table(x = epoc.bary, file = "C:/git/ODF/data/ODF_epoc_barycentre.txt",sep="\t",dec=","
+      write.table(x = epoc.bary, file = "C:/git/ODF/data/ODF_epoc_barycentre.txt",sep="\t",dec="."
                   ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
-      write.table(x = epoc.filt7.court.in, file = "C:/git/ODF/data/ODF_epoc_observation.txt",sep="\t",dec=","
+      write.table(x = epoc.filt7.court.in, file = "C:/git/ODF/data/ODF_epoc_observation.txt",sep="\t",dec="."
                   ,fileEncoding = "UTF-8", row.names = FALSE, quote=FALSE) 
     
       
