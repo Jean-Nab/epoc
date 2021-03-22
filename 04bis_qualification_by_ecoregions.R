@@ -800,7 +800,7 @@
       # RECUPERATION DES LISTES FLAGGEES, selon l'expérience protocole (nb listes antérieures réalisé) ----
           # calcul de l'expérience (par incrementation) ----
             # formation de la colonne experience - tri des listes par date de realisation
-              exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")]
+              exp.dtf <- epoc.envi.liste[,c("ID_liste","Observateur","Jour","Mois","Annee","Heure_de_debut","Minute_de_debut")] # cf 02 --> $new <- paste0($c1,$c2,...)
                   
               i <- 1
               while(i <= nrow(exp.dtf)){
