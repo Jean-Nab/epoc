@@ -543,7 +543,6 @@
 
           
           
-          
       # Selection des listes realisee dans les zones tampons / join avec les informations précédentes et pose des flags par listes/observateur -----
           bary.tampon.reg <- bary.reg[bary.reg$nb_intersection != 1,"ID_liste"]
           
